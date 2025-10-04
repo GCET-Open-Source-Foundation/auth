@@ -19,7 +19,7 @@ type db_details struct {
 }
 
 /*
-We do not allow external accses of the global var.
+We do not allow external access of the global var.
 There might be unexpected errors if we let others edit
 the db details.
 */
