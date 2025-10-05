@@ -36,7 +36,8 @@ func create_users(pool *pgxpool.Pool) {
 	query := `
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
-            password_hash TEXT NOT NULL
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL
         )`
 	_, err := pool.Exec(context.Background(), query)
 	if err != nil {
@@ -147,6 +148,7 @@ func check_users(pool *pgxpool.Pool) {
 	expected := map[string]string{
 		"user_id":       "text",
 		"password_hash": "text",
+		"salt":          "text",
 	}
 
 	for col, typ := range expected {
@@ -326,8 +328,8 @@ Returns a *pgx.Conn structure.
 
 func db_connect(details *db_details) (*pgxpool.Pool, error) {
 	/*
-	The password may contain multiple special characters,
-	therefore it is primodial to use, url.URL here.
+		The password may contain multiple special characters,
+		therefore it is primodial to use, url.URL here.
 	*/
 	u := &url.URL{
 		Scheme: "postgres",
