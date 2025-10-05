@@ -30,7 +30,8 @@ And we store no other info, because it just slows things down.
 ```
 CREATE TABLE users (
         user_id TEXT PRIMARY KEY,
-        password_hash TEXT NOT NULL
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL
 );
 ```
 
