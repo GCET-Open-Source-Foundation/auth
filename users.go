@@ -35,14 +35,14 @@ func Login_user(username, password string) bool {
 	return true
 }
 
-func Register_user(username, password string) bool {
+func Register_user(username, password string) error {
 	if !init_check {
-		return false
+		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
 	salt, err := generate_salt(32)
 	if err != nil {
-		return false
+		return err
 	}
 
 	hash := Hash_password(password, salt)
@@ -51,8 +51,11 @@ func Register_user(username, password string) bool {
 		"INSERT INTO users (user_id, password_hash, salt) VALUES ($1, $2, $3)",
 		username, hash, salt,
 	)
+	if err != nil {
+		return err
+	}
 
-	return err == nil
+	return nil
 }
 
 func Delete_user(username string) error {
