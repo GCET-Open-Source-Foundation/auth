@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 )
 
 func generate_salt(size int) (string, error) {
@@ -50,6 +51,23 @@ func Register_user(username, password string) bool {
 		"INSERT INTO users (user_id, password_hash, salt) VALUES ($1, $2, $3)",
 		username, hash, salt,
 	)
-	
+
 	return err == nil
+}
+
+func Delete_user(username string) error {
+	if !init_check {
+		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+	}
+
+	_, err := conn.Exec(
+		context.Background(),
+		"DELETE FROM users WHERE user_id = $1",
+		username,
+	)
+
+	if err != nil {
+		return err
+	}
+	return nil
 }
