@@ -120,9 +120,6 @@ func Hash_password(password, salt string) string {
 }
 
 func compare_passwords(password, salt, storedHash string) bool {
-	if is_pepper_present {
-		password += pepper
-	}
 	newHash := Hash_password(password, salt)
 
 	return subtle.ConstantTimeCompare([]byte(newHash), []byte(storedHash)) == 1
