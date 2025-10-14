@@ -42,12 +42,12 @@ lose your pepper value.
 var is_pepper_present bool = false
 
 /*
-A function that is not generally recommended to use unless the user have the technically knowledge.
+A function that is not generally recommended to use unless the user has the technical knowledge.
 But incase you want to use this, please ensure this is used before any API is validated.
 */
 func Default_salt_parameters(time uint32, memory uint32, threads uint8, keyLen uint32) error {
 	/*
-		Some securtiy measures we ensure, this doesn't allow you to shoot yourself in foot completely
+		Some security measures we ensure, this doesn't allow you to shoot yourself in foot completely
 	*/
 	if time == 0 {
 		return fmt.Errorf("time (iterations) cannot be zero")
@@ -71,7 +71,7 @@ func Default_salt_parameters(time uint32, memory uint32, threads uint8, keyLen u
 }
 
 /*
-This function should be stricly called in the global call and not between some
+This function should be strictly called in the global call and not between some
 random Register API.
 
 Because we only use is_pepper_present() to check, and once the program ends, we free the memory
