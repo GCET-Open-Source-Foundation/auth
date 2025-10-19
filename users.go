@@ -58,6 +58,33 @@ func Register_user(username, password string) error {
 	return nil
 }
 
+func ChangePass(username, newPassword string) error {
+	if !init_check {
+		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+	}
+
+	newSalt, err := generate_salt(32)
+	if err != nil {
+		return fmt.Errorf("could not generate new salt: %w", err)
+	}
+
+	newHash := Hash_password(newPassword, newSalt)
+
+	cmdTag, err := conn.Exec(context.Background(),
+		"UPDATE users SET password_hash = $1, salt = $2 WHERE user_id = $3",
+		newHash, newSalt, username,
+	)
+	if err != nil {
+		return fmt.Errorf("database error while updating password: %w", err)
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		return fmt.Errorf("user '%s' not found", username)
+	}
+
+	return nil
+}
+
 func Delete_user(username string) error {
 	if !init_check {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
