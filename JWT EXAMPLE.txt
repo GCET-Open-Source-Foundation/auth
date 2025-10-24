@@ -1,0 +1,88 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"myapp/auth" // change this to your module path
+)
+
+// User model
+type User struct {
+	ID       string
+	Email    string
+	Password string
+}
+
+// Connect to PostgreSQL
+func connectDB() (*pgx.Conn, error) {
+	conn, err := pgx.Connect(context.Background(), "postgres://username:password@localhost:5432/yourdb")
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+// LOGIN API
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	var creds struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&creds); err != nil {
+		http.Error(w, "Invalid input", http.StatusBadRequest)
+		return
+	}
+
+	conn, err := connectDB()
+	if err != nil {
+		http.Error(w, "Database connection failed", http.StatusInternalServerError)
+		return
+	}
+	defer conn.Close(context.Background())
+
+	// Verify user
+	var userID string
+	err = conn.QueryRow(context.Background(),
+		"SELECT id FROM users WHERE email=$1 AND password=$2",
+		creds.Email, creds.Password).Scan(&userID)
+
+	if err != nil {
+		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		return
+	}
+
+	// Generate JWT token
+	token, err := auth.GenerateToken(userID, time.Hour*24)
+	if err != nil {
+		http.Error(w, "Error generating token", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{"token": token})
+}
+
+// Example Protected Route — get current user
+func currentUserHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err := auth.GetUserIDFromRequest(r)
+	if err != nil {
+		http.Error(w, "Unauthorized: "+err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": fmt.Sprintf("Current user ID is %s", userID),
+	})
+}
+
+func main() {
+	http.HandleFunc("/login", loginHandler)
+	http.HandleFunc("/me", currentUserHandler)
+
+	fmt.Println("Server running on http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
+}
