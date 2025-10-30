@@ -23,7 +23,7 @@ This can be further compliemented by the Register/Login API itself.
 And this unique id be email or phone number that's their wish, and this library
 has no single way to reject something that is being inserted in the database, bacause everyone has different preferences, and it should be complimenting accordingly.
 
-The second row however, stores password which is hashed by bcrypt. We choose bcrypt because it is tried and tested and has the best outcome so far.
+The second row however, stores password which is hashed by argon2. We choose argon2 because it is tried and tested and has the best outcome so far.
 
 And we store no other info, because it just slows things down.
 
