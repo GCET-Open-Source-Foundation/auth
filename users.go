@@ -35,6 +35,20 @@ func Login_user(username, password string) bool {
 	return true
 }
 
+/*
+Login_jwt validates a token string by calling auth.Validate_token (JWT login).
+This is the recommended way to validate a user's JWT.
+It returns the claims if the token is valid.
+*/
+func Login_jwt(token_string string) (*jwt_claims, error) {
+	/*
+		We call Validate_token from jwt.go to handle the logic.
+		This keeps all user login methods in users.go, but all
+		JWT logic in jwt.go.
+	*/
+	return Validate_token(token_string)
+}
+
 func Register_user(username, password string) error {
 	if !init_check {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
