@@ -1,7 +1,7 @@
 Auth. Works with Postgres. Supports multiple auth methods, spaces, roles, permissions. Integrates with any API library.
 
 install with
-`go get https://github.com/GCET-Open-Source-Foundation/auth`
+`go get github.com/GCET-Open-Source-Foundation/auth`
 
 auth.Init() - Sets up the library. Connects to Postgres, prepares internal state, and enables other functions. Must be called before doing anything else.
 
