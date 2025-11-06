@@ -8,17 +8,6 @@ import (
 )
 
 /*
-A secret key for signing JWTs.
-This is stored in memory only, similar to the pepper.
-*/
-var jwt_secret []byte
-
-/*
-A global variable to check if the JWT secret has been set.
-*/
-var jwt_init_check bool = false
-
-/*
 jwt_claims struct defines the custom claims for our JWT.
 It includes the standard RegisteredClaims and adds the user ID.
 */
@@ -35,13 +24,14 @@ directly after calling auth.Init().
 
 Losing or changing this secret will invalidate all existing tokens.
 */
-func JWT_init(secret string) error {
+func (a *Auth) JWT_init(secret string) error {
 	if secret == "" {
 		return fmt.Errorf("JWT secret cannot be empty")
 	}
 
-	jwt_secret = []byte(secret)
-	jwt_init_check = true
+	a.jwt_once.Do(func() {
+		a.jwt_secret = []byte(secret)
+	})
 	return nil
 }
 
@@ -49,12 +39,9 @@ func JWT_init(secret string) error {
 Generate_token creates a new, signed JWT for a given username
 with a specified expiry duration.
 */
-func Generate_token(username string, expiry_duration time.Duration) (string, error) {
-	if !jwt_init_check {
+func (a *Auth) Generate_token(username string, expiry_duration time.Duration) (string, error) {
+	if len(a.jwt_secret) == 0 {
 		return "", fmt.Errorf("run auth.JWT_init() first to set the JWT secret")
-	}
-	if !init_check {
-		return "", fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
 	claims := jwt_claims{
@@ -70,7 +57,7 @@ func Generate_token(username string, expiry_duration time.Duration) (string, err
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	token_string, err := token.SignedString(jwt_secret)
+	token_string, err := token.SignedString(a.jwt_secret)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign token: %w", err)
 	}
@@ -85,8 +72,8 @@ and returns the jwt_claims if the token is valid.
 It is recommended to use users.go->Login_jwt() instead, as this
 function may change.
 */
-func Validate_token(token_string string) (*jwt_claims, error) {
-	if !jwt_init_check {
+func (a *Auth) Validate_token(token_string string) (*jwt_claims, error) {
+	if len(a.jwt_secret) == 0 {
 		return nil, fmt.Errorf("run auth.JWT_init() first to set the JWT secret")
 	}
 
@@ -94,7 +81,7 @@ func Validate_token(token_string string) (*jwt_claims, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return jwt_secret, nil
+		return a.jwt_secret, nil
 	})
 
 	if err != nil {

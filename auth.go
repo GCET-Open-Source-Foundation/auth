@@ -1,7 +1,9 @@
 package auth
 
 import (
+	"context" // Import context
 	"fmt"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,44 +21,51 @@ type db_details struct {
 }
 
 /*
-We do not allow external access of the global var.
-There might be unexpected errors if we let others edit
-the db details.
+Auth is a struct that holds the internal state of the library.
+Unlike the previous global-variable approach,
+this design allows the library to be safely used concurrently.
 */
-var global db_details
+type Auth struct {
+	conn         *pgxpool.Pool
+	argon_params argon_parameters
+	pepper       string
+	pepper_once  sync.Once
+	jwt_secret   []byte
+	jwt_once     sync.Once
+}
 
 /*
-The init_check acts as a guardrail and nothing more than that.
-We can easily do if Conn == nil {} and get the details, but this
-forms like a just in case variable.
-*/
-var init_check bool = false
+Init configures the db_details, connects to the database,
+checks schemas, and returns a fully initialized Auth struct.
 
-/*
-global database connection variable
+It now requires a context for the connection and schema check process.
 */
-var conn *pgxpool.Pool
+func Init(ctx context.Context, port uint16, db_user, db_pass, db_name string) (*Auth, error) {
+	db_temp := db_details{
+		port:          port,
+		username:      db_user,
+		password:      db_pass,
+		database_name: db_name,
+	}
 
-/*
-Init configures the global db_details, connects to the database,
-and sets db_check_global if successful.
-*/
-func Init(port uint16, db_user, db_pass, db_name string) error {
-	global.port = port
-	global.username = db_user
-	global.password = db_pass
-	global.database_name = db_name
-
-	pool, err := db_connect(&global)
+	pool, err := db_connect(ctx, &db_temp)
 	if err != nil {
-		return fmt.Errorf("db connect failed: %w", err)
+		return nil, fmt.Errorf("db connect failed: %w", err)
 	}
 	if pool == nil {
-		return fmt.Errorf("db connect returned nil connection")
+		return nil, fmt.Errorf("db connect returned nil connection")
 	}
 
 	/* No errors in init */
-	conn = pool
-	init_check = true
-	return nil
+	temp := &Auth{
+		conn: pool,
+		argon_params: global_default_argon,
+	}
+
+	if err := temp.check_tables(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("database schema check failed: %w", err)
+	}
+
+	return temp, nil
 }

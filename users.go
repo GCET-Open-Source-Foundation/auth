@@ -16,19 +16,19 @@ func generate_salt(size int) (string, error) {
 	return base64.RawStdEncoding.EncodeToString(salt), nil
 }
 
-func Login_user(username, password string) bool {
-	if !init_check {
+func (a *Auth) Login_user(username, password string) bool {
+	if a.conn == nil {
 		return false
 	}
 
 	var storedHash, storedSalt string
 	query := "SELECT password_hash, salt FROM users WHERE user_id = $1"
-	err := conn.QueryRow(context.Background(), query, username).Scan(&storedHash, &storedSalt)
+	err := a.conn.QueryRow(context.Background(), query, username).Scan(&storedHash, &storedSalt)
 	if err != nil {
 		return false
 	}
 
-	if !compare_passwords(password, storedSalt, storedHash) {
+	if !a.compare_passwords(password, storedSalt, storedHash) {
 		return false
 	}
 
@@ -40,17 +40,17 @@ Login_jwt validates a token string by calling auth.Validate_token (JWT login).
 This is the recommended way to validate a user's JWT.
 It returns the claims if the token is valid.
 */
-func Login_jwt(token_string string) (*jwt_claims, error) {
+func (a *Auth) Login_jwt(token_string string) (*jwt_claims, error) {
 	/*
 		We call Validate_token from jwt.go to handle the logic.
 		This keeps all user login methods in users.go, but all
 		JWT logic in jwt.go.
 	*/
-	return Validate_token(token_string)
+	return a.Validate_token(token_string)
 }
 
-func Register_user(username, password string) error {
-	if !init_check {
+func (a *Auth) Register_user(username, password string) error {
+	if a.conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
@@ -59,9 +59,9 @@ func Register_user(username, password string) error {
 		return err
 	}
 
-	hash := Hash_password(password, salt)
+	hash := a.Hash_password(password, salt)
 
-	_, err = conn.Exec(context.Background(),
+	_, err = a.conn.Exec(context.Background(),
 		"INSERT INTO users (user_id, password_hash, salt) VALUES ($1, $2, $3)",
 		username, hash, salt,
 	)
@@ -72,8 +72,8 @@ func Register_user(username, password string) error {
 	return nil
 }
 
-func ChangePass(username, newPassword string) error {
-	if !init_check {
+func (a *Auth) ChangePass(username, newPassword string) error {
+	if a.conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
@@ -82,9 +82,9 @@ func ChangePass(username, newPassword string) error {
 		return fmt.Errorf("could not generate new salt: %w", err)
 	}
 
-	newHash := Hash_password(newPassword, newSalt)
+	newHash := a.Hash_password(newPassword, newSalt)
 
-	cmdTag, err := conn.Exec(context.Background(),
+	cmdTag, err := a.conn.Exec(context.Background(),
 		"UPDATE users SET password_hash = $1, salt = $2 WHERE user_id = $3",
 		newHash, newSalt, username,
 	)
@@ -99,12 +99,12 @@ func ChangePass(username, newPassword string) error {
 	return nil
 }
 
-func Delete_user(username string) error {
-	if !init_check {
+func (a *Auth) Delete_user(username string) error {
+	if a.conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
-	_, err := conn.Exec(
+	_, err := a.conn.Exec(
 		context.Background(),
 		"DELETE FROM users WHERE user_id = $1",
 		username,

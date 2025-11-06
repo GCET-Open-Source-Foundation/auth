@@ -12,85 +12,78 @@ import (
 /*
 Creates the needed schema from scratch for prompted table.
 Expects table to not be present at all.
-
-If present and schema differs.
-
-You have to erase the table manually.
-You are on your own.
 */
-func create_spaces(pool *pgxpool.Pool) {
+func (a *Auth) create_spaces(ctx context.Context) error {
 	query := `
-        CREATE TABLE IF NOT EXISTS spaces (
-            space_name TEXT PRIMARY KEY,
-            authority INTEGER NOT NULL
-        )`
-	_, err := pool.Exec(context.Background(), query)
+	CREATE TABLE IF NOT EXISTS spaces (
+	space_name TEXT PRIMARY KEY,
+	authority INTEGER NOT NULL
+	 )`
+	_, err := a.conn.Exec(ctx, query)
 	if err != nil {
-		fmt.Println("Error creating spaces table:", err)
-		return
+		return fmt.Errorf("error creating spaces table: %w", err)
 	}
-	fmt.Println("Spaces table created successfully (or already exists).")
+	log.Println("Spaces table created successfully (or already exists).")
+	return nil
 }
 
-func create_users(pool *pgxpool.Pool) {
+func (a *Auth) create_users(ctx context.Context) error {
 	query := `
-        CREATE TABLE IF NOT EXISTS users (
-            user_id TEXT PRIMARY KEY,
-            password_hash TEXT NOT NULL,
-            salt TEXT NOT NULL
-        )`
-	_, err := pool.Exec(context.Background(), query)
+	CREATE TABLE IF NOT EXISTS users (
+	user_id TEXT PRIMARY KEY,
+	password_hash TEXT NOT NULL,
+	 salt TEXT NOT NULL
+	)`
+	_, err := a.conn.Exec(ctx, query)
 	if err != nil {
-		fmt.Println("Error creating users table:", err)
-		return
+		return fmt.Errorf("error creating users table: %w", err)
 	}
-	fmt.Println("Users table created successfully (or already exists).")
+	log.Println("Users table created successfully (or already exists).")
+	return nil
 }
 
-func create_roles(pool *pgxpool.Pool) {
+func (a *Auth) create_roles(ctx context.Context) error {
 	query := `
-        CREATE TABLE IF NOT EXISTS roles (
-            role TEXT PRIMARY KEY
-        )`
-	_, err := pool.Exec(context.Background(), query)
+	CREATE TABLE IF NOT EXISTS roles (
+	role TEXT PRIMARY KEY
+	)`
+	_, err := a.conn.Exec(ctx, query)
 	if err != nil {
-		fmt.Println("Error creating roles table:", err)
-		return
+		return fmt.Errorf("error creating roles table: %w", err)
 	}
-	fmt.Println("Roles table created successfully (or already exists).")
+	log.Println("Roles table created successfully (or already exists).")
+	return nil
 }
 
-func create_permissions(pool *pgxpool.Pool) {
+func (a *Auth) create_permissions(ctx context.Context) error {
 	query := `
-        CREATE TABLE IF NOT EXISTS permissions (
-            user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-            space_name TEXT NOT NULL REFERENCES spaces(space_name) ON DELETE CASCADE,
-            role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
-            PRIMARY KEY (user_id, space_name, role)
-        )`
-	_, err := pool.Exec(context.Background(), query)
+	CREATE TABLE IF NOT EXISTS permissions (
+	user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+	space_name TEXT NOT NULL REFERENCES spaces(space_name) ON DELETE CASCADE,
+	role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
+	PRIMARY KEY (user_id, space_name, role)
+	)`
+	_, err := a.conn.Exec(ctx, query)
 	if err != nil {
-		fmt.Println("Error creating permissions table:", err)
-		return
+		return fmt.Errorf("error creating permissions table: %w", err)
 	}
-	fmt.Println("Permissions table created successfully (or already exists).")
+	log.Println("Permissions table created successfully (or already exists).")
+	return nil
 }
 
 /*
-These should only be called if we already have prompted table available...
-If not available use the create_<prompt> func
-Unless the errors we get will be unclear.
+These functions now return 'error' instead of calling log.Fatal()
 */
-func check_spaces(pool *pgxpool.Pool) {
+func (a *Auth) check_spaces(ctx context.Context) error {
 	query := `
-        SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns
-        WHERE table_name = 'spaces'
-        ORDER BY ordinal_position;
-    `
-	rows, err := pool.Query(context.Background(), query)
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'spaces'
+            ORDER BY ordinal_position;
+      `
+	rows, err := a.conn.Query(ctx, query)
 	if err != nil {
-		log.Fatal("Failed to query spaces schema:", err)
+		return fmt.Errorf("failed to query spaces schema: %w", err)
 	}
 	defer rows.Close()
 
@@ -101,7 +94,7 @@ func check_spaces(pool *pgxpool.Pool) {
 	for rows.Next() {
 		var name, dataType, isNullable string
 		if err := rows.Scan(&name, &dataType, &isNullable); err != nil {
-			log.Fatal("Failed to scan spaces schema:", err)
+			return fmt.Errorf("failed to scan spaces schema: %w", err)
 		}
 		columns[name] = struct {
 			dataType   string
@@ -116,23 +109,24 @@ func check_spaces(pool *pgxpool.Pool) {
 
 	for col, typ := range expected {
 		if c, ok := columns[col]; !ok || c.dataType != typ {
-			log.Fatalf("Spaces table schema mismatch for column '%s': expected %s, got %s", col, typ, c.dataType)
+			return fmt.Errorf("spaces table schema mismatch for column '%s': expected %s, got %s", col, typ, c.dataType)
 		}
 	}
 
-	fmt.Println("Spaces table schema is correct.")
+	log.Println("Spaces table schema is correct.")
+	return nil
 }
 
-func check_users(pool *pgxpool.Pool) {
+func (a *Auth) check_users(ctx context.Context) error {
 	query := `
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = 'users'
-        ORDER BY ordinal_position;
-    `
-	rows, err := pool.Query(context.Background(), query)
+	SELECT column_name, data_type
+	FROM information_schema.columns
+	WHERE table_name = 'users'
+	ORDER BY ordinal_position;
+      `
+	rows, err := a.conn.Query(ctx, query)
 	if err != nil {
-		log.Fatal("Failed to query users schema:", err)
+		return fmt.Errorf("failed to query users schema: %w", err)
 	}
 	defer rows.Close()
 
@@ -140,7 +134,7 @@ func check_users(pool *pgxpool.Pool) {
 	for rows.Next() {
 		var name, dataType string
 		if err := rows.Scan(&name, &dataType); err != nil {
-			log.Fatal("Failed to scan users schema:", err)
+			return fmt.Errorf("failed to scan users schema: %w", err)
 		}
 		columns[name] = dataType
 	}
@@ -153,23 +147,24 @@ func check_users(pool *pgxpool.Pool) {
 
 	for col, typ := range expected {
 		if t, ok := columns[col]; !ok || t != typ {
-			log.Fatalf("Users table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
+			return fmt.Errorf("users table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
 		}
 	}
 
-	fmt.Println("Users table schema is correct.")
+	log.Println("Users table schema is correct.")
+	return nil
 }
 
-func check_roles(pool *pgxpool.Pool) {
+func (a *Auth) check_roles(ctx context.Context) error {
 	query := `
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = 'roles'
-        ORDER BY ordinal_position;
-    `
-	rows, err := pool.Query(context.Background(), query)
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = 'roles'
+            ORDER BY ordinal_position;
+	      `
+	rows, err := a.conn.Query(ctx, query)
 	if err != nil {
-		log.Fatal("Failed to query roles schema:", err)
+		return fmt.Errorf("failed to query roles schema: %w", err)
 	}
 	defer rows.Close()
 
@@ -177,7 +172,7 @@ func check_roles(pool *pgxpool.Pool) {
 	for rows.Next() {
 		var name, dataType string
 		if err := rows.Scan(&name, &dataType); err != nil {
-			log.Fatal("Failed to scan roles schema:", err)
+			return fmt.Errorf("failed to scan roles schema: %w", err)
 		}
 		columns[name] = dataType
 	}
@@ -188,23 +183,24 @@ func check_roles(pool *pgxpool.Pool) {
 
 	for col, typ := range expected {
 		if t, ok := columns[col]; !ok || t != typ {
-			log.Fatalf("Roles table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
+			return fmt.Errorf("roles table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
 		}
 	}
 
-	fmt.Println("Roles table schema is correct.")
+	log.Println("Roles table schema is correct.")
+	return nil
 }
 
-func check_permissions(pool *pgxpool.Pool) {
+func (a *Auth) check_permissions(ctx context.Context) error {
 	query := `
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = 'permissions'
-        ORDER BY ordinal_position;
-    `
-	rows, err := pool.Query(context.Background(), query)
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = 'permissions'
+            ORDER BY ordinal_position;
+      `
+	rows, err := a.conn.Query(ctx, query)
 	if err != nil {
-		log.Fatal("Failed to query permissions schema:", err)
+		return fmt.Errorf("failed to query permissions schema: %w", err)
 	}
 	defer rows.Close()
 
@@ -212,7 +208,7 @@ func check_permissions(pool *pgxpool.Pool) {
 	for rows.Next() {
 		var name, dataType string
 		if err := rows.Scan(&name, &dataType); err != nil {
-			log.Fatal("Failed to scan permissions schema:", err)
+			return fmt.Errorf("failed to scan permissions schema: %w", err)
 		}
 		columns[name] = dataType
 	}
@@ -225,100 +221,98 @@ func check_permissions(pool *pgxpool.Pool) {
 
 	for col, typ := range expected {
 		if t, ok := columns[col]; !ok || t != typ {
-			log.Fatalf("Permissions table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
+			return fmt.Errorf("permissions table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
 		}
 	}
 
-	fmt.Println("Permissions table schema is correct.")
+	log.Println("Permissions table schema is correct.")
+	return nil
 }
 
 /*
 Checks if the table exists or not and returns the output in boolean
 */
-func table_exists(pool *pgxpool.Pool, table string) (bool, error) {
+func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS (
 			SELECT 1
-			FROM information_schema.tables 
+			FROM information_schema.tables  
 			WHERE table_schema = 'public'
 			AND table_name = $1
 	)`
-	/*
-		Here exists stores the value that SELECT EXISTS returns conveniently
-	*/
-	err := pool.QueryRow(context.Background(), query, table).Scan(&exists)
+	err := a.conn.QueryRow(ctx, query, table).Scan(&exists)
 	return exists, err
 }
 
 /*
-Systematically checks these tables
-1. spaces
-2. users
-3. roles
-4. permissions
-Creates the tables that doesn't exist yet.
+Systematically checks all tables and returns an error if any check fails.
 */
-func check_tables(pool *pgxpool.Pool) {
-	/*
-		Probably not the smartest code I wrote,
-		but something good to begin with, modular and easy to read
-
-		We separate all the func calls for a reason, until we get an
-		insanely good method to handle different schemas let's just stick
-		to human readable code folks, we ain't machines ;)
-	*/
-
+func (a *Auth) check_tables(ctx context.Context) error {
 	var check bool = false
 	var err error = nil
 
-	check, err = table_exists(pool, "spaces")
+	check, err = a.table_exists(ctx, "spaces")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	} else {
 		if check {
-			check_spaces(pool)
+			if err = a.check_spaces(ctx); err != nil {
+				return err
+			}
 		} else {
-			create_spaces(pool)
+			if err = a.create_spaces(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
-	check, err = table_exists(pool, "users")
+	check, err = a.table_exists(ctx, "users")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	} else {
 		if check {
-			check_users(pool)
+			if err = a.check_users(ctx); err != nil {
+				return err
+			}
 		} else {
-			create_users(pool)
+			if err = a.create_users(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
-	check, err = table_exists(pool, "roles")
+	check, err = a.table_exists(ctx, "roles")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	} else {
 		if check {
-			check_roles(pool)
+			if err = a.check_roles(ctx); err != nil {
+				return err
+			}
 		} else {
-			create_roles(pool)
+			if err = a.create_roles(ctx); err != nil {
+				return err
+			}
 		}
 	}
 
-	check, err = table_exists(pool, "permissions")
+	check, err = a.table_exists(ctx, "permissions")
 	if err != nil {
-		fmt.Println(err)
-		return
+		return err
 	} else {
 		if check {
-			check_permissions(pool)
+			if err = a.check_permissions(ctx); err != nil {
+				return err
+			}
 		} else {
-			create_permissions(pool)
+			if err = a.create_permissions(ctx); err != nil {
+				return err
+			}
 		}
 	}
+
+	return nil
 }
 
 /*
@@ -326,7 +320,7 @@ Wrapper function around jackc/pgx/v5 pgx.Conn().
 Returns a *pgx.Conn structure.
 */
 
-func db_connect(details *db_details) (*pgxpool.Pool, error) {
+func db_connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
 	/*
 		The password may contain multiple special characters,
 		therefore it is primodial to use, url.URL here.
@@ -340,7 +334,7 @@ func db_connect(details *db_details) (*pgxpool.Pool, error) {
 
 	urlStr := u.String()
 
-	pool, err := pgxpool.New(context.Background(), urlStr)
+	pool, err := pgxpool.New(ctx, urlStr)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to create connection pool: %w\nPlease configure Postgres correctly",
@@ -348,14 +342,12 @@ func db_connect(details *db_details) (*pgxpool.Pool, error) {
 		)
 	}
 
-	// Validate connection
-	if err := pool.QueryRow(context.Background(), "SELECT 1").Scan(new(int)); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT 1").Scan(new(int)); err != nil {
+		pool.Close()
 		return nil, fmt.Errorf("failed to connect to Postgres: %w", err)
 	}
 
-	fmt.Println("DB connection pool established")
-	fmt.Println("Checking needed tables and schemas")
-	check_tables(pool)
+	log.Println("DB connection pool established")
 
 	return pool, nil
 }

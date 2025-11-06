@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-func Create_role(name string) error {
-	if !init_check {
+func (a *Auth) Create_role(name string) error {
+	if a.conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
-	_, err := conn.Exec(context.Background(),
+	_, err := a.conn.Exec(context.Background(),
 		"INSERT INTO roles(role) VALUES ($1)",
 		name,
 	)
@@ -22,17 +22,17 @@ func Create_role(name string) error {
 	return nil
 }
 
-func Delete_role(name string) error {
-	if !init_check {
+func (a *Auth) Delete_role(name string) error {
+	if a.conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
-	_, err := conn.Exec(
+	_, err := a.conn.Exec(
 		context.Background(),
 		"DELETE FROM roles WHERE role = $1",
 		name,
 	)
-	
+
 	if err != nil {
 		return err
 	}
