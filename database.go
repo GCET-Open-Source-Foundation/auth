@@ -71,6 +71,21 @@ func (a *Auth) create_permissions(ctx context.Context) error {
 	return nil
 }
 
+func (a *Auth) create_otps(ctx context.Context) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS otps (
+		email TEXT PRIMARY KEY,
+		code TEXT NOT NULL,
+		expires_at TIMESTAMP NOT NULL
+	)`
+	_, err := a.conn.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("error creating otps table: %w", err)
+	}
+	log.Println("OTPs table created successfully (or already exists).")
+	return nil
+}
+
 /*
 These functions now return 'error' instead of calling log.Fatal()
 */
@@ -229,6 +244,56 @@ func (a *Auth) check_permissions(ctx context.Context) error {
 	return nil
 }
 
+func (a *Auth) check_otps(ctx context.Context) error {
+	query := `
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_name = 'otps'
+            ORDER BY ordinal_position;
+      `
+	rows, err := a.conn.Query(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to query otps schema: %w", err)
+	}
+	defer rows.Close()
+
+	/* We'll map the columns we find to verify them */
+	columns := map[string]struct {
+		dataType   string
+		isNullable string
+	}{}
+	for rows.Next() {
+		var name, dataType, isNullable string
+		if err := rows.Scan(&name, &dataType, &isNullable); err != nil {
+			return fmt.Errorf("failed to scan otps schema: %w", err)
+		}
+		columns[name] = struct {
+			dataType   string
+			isNullable string
+		}{dataType, isNullable}
+	}
+
+	/* Define what we expect
+	Note: In Postgres, TIMESTAMP WITHOUT TIME ZONE usually shows as 'timestamp without time zone'
+	Depending on your specific Postgres setup, it might just be 'timestamp'.
+	The library seems to check simple types. Let's assume standard text/timestamp. */
+	expected := map[string]string{
+		"email":      "text",
+		"code":       "text",
+		"expires_at": "timestamp without time zone", // standard postgres timestamp type
+	}
+
+	for col, typ := range expected {
+		if c, ok := columns[col]; !ok || c.dataType != typ {
+			/* If validation fails, we return an error */
+			return fmt.Errorf("otps table schema mismatch for column '%s': expected %s, got %s", col, typ, c.dataType)
+		}
+	}
+
+	log.Println("OTPs table schema is correct.")
+	return nil
+}
+
 /*
 Checks if the table exists or not and returns the output in boolean
 */
@@ -307,6 +372,21 @@ func (a *Auth) check_tables(ctx context.Context) error {
 			}
 		} else {
 			if err = a.create_permissions(ctx); err != nil {
+				return err
+			}
+		}
+	}
+
+	check, err = a.table_exists(ctx, "otps")
+	if err != nil {
+		return err
+	} else {
+		if check {
+			if err = a.check_otps(ctx); err != nil {
+				return err
+			}
+		} else {
+			if err = a.create_otps(ctx); err != nil {
 				return err
 			}
 		}
