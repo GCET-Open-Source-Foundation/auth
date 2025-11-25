@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"context" // Import context
+	"context"
 	"fmt"
 	"sync"
 
@@ -26,12 +26,17 @@ Unlike the previous global-variable approach,
 this design allows the library to be safely used concurrently.
 */
 type Auth struct {
-	conn         *pgxpool.Pool
-	argon_params argon_parameters
-	pepper       string
-	pepper_once  sync.Once
-	jwt_secret   []byte
-	jwt_once     sync.Once
+	conn          *pgxpool.Pool
+	argon_params  argon_parameters
+	pepper        string
+	pepper_once   sync.Once
+	jwt_secret    []byte
+	jwt_once      sync.Once
+	smtp_email    string
+	smtp_password string
+	smtp_host     string
+	smtp_port     string
+	smtp_once     sync.Once
 }
 
 /*
@@ -58,7 +63,7 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name string) (*
 
 	/* No errors in init */
 	temp := &Auth{
-		conn: pool,
+		conn:         pool,
 		argon_params: global_default_argon,
 	}
 
@@ -66,6 +71,27 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name string) (*
 		pool.Close()
 		return nil, fmt.Errorf("database schema check failed: %w", err)
 	}
+	/* start the background OTP cleaner */
+	temp.start_otp_cleanup()
 
 	return temp, nil
+}
+
+/*
+SMTP_init sets the SMTP server details and credentials.
+This must be called once at startup if you intend to use OTP features.
+It stores the credentials in memory only.
+*/
+func (a *Auth) SMTP_init(email, password, host, port string) error {
+	if email == "" || password == "" || host == "" || port == "" {
+		return fmt.Errorf("all SMTP parameters (email, password, host, port) are required")
+	}
+
+	a.smtp_once.Do(func() {
+		a.smtp_email = email
+		a.smtp_password = password
+		a.smtp_host = host
+		a.smtp_port = port
+	})
+	return nil
 }
