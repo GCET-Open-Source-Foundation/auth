@@ -106,12 +106,22 @@ func (a *Auth) start_otp_cleanup() {
 	/* Hardcoded interval of 5 minutes */
 	ticker := time.NewTicker(5 * time.Minute)
 
-	/* Start the background worker */
 	go func() {
-		for range ticker.C {
-			if a.conn != nil {
-				/* Ignore errors in background cleanup to avoid crashing */
-				_, _ = a.conn.Exec(context.Background(), "DELETE FROM otps WHERE expires_at < NOW()")
+		/* Ensure the ticker stops when we exit to prevent leaks */
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				/* The Timer ticked: Do the work */
+				if a.conn != nil {
+					_, _ = a.conn.Exec(context.Background(), "DELETE FROM otps WHERE expires_at < NOW()")
+				}
+
+			case <-a.ctx.Done():
+				/* The Context was cancelled: STOP EVERYTHING */
+				/* This returns from the function, killing the goroutine "neatly" */
+				return
 			}
 		}
 	}()
