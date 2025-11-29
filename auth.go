@@ -37,6 +37,8 @@ type Auth struct {
 	smtp_host     string
 	smtp_port     string
 	smtp_once     sync.Once
+	ctx           context.Context
+	cancel        context.CancelFunc
 }
 
 /*
@@ -61,10 +63,16 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name string) (*
 		return nil, fmt.Errorf("db connect returned nil connection")
 	}
 
+	/* Create a context for the Auth library's lifecycle */
+	/* context.WithCancel returns a context and a function to cancel it */
+	libCtx, libCancel := context.WithCancel(context.Background())
+
 	/* No errors in init */
 	temp := &Auth{
 		conn:         pool,
 		argon_params: global_default_argon,
+		ctx:          libCtx,
+		cancel:       libCancel,
 	}
 
 	if err := temp.check_tables(ctx); err != nil {
@@ -94,4 +102,36 @@ func (a *Auth) SMTP_init(email, password, host, port string) error {
 		a.smtp_port = port
 	})
 	return nil
+}
+
+/*
+Close performs a graceful shutdown of the Auth library.
+It stops background tasks, closes database connections, and wipes sensitive data from memory.
+*/
+func (a *Auth) Close() {
+	/* 1. Stop background routines (OTP cleaner) */
+	if a.cancel != nil {
+		a.cancel() /* This sends the signal to otp.go to stop!*/
+	}
+
+	/* 2. Close Database Connection */
+	if a.conn != nil {
+		a.conn.Close()
+		a.conn = nil
+	}
+
+	/* 3. Wipe Sensitive Memory (Security Best Practice) */
+	/* Overwrite JWT secret with zeros */
+	if len(a.jwt_secret) > 0 {
+		for i := range a.jwt_secret {
+			a.jwt_secret[i] = 0
+		}
+		a.jwt_secret = nil
+	}
+
+	/* Clear string secrets (Go strings are immutable, but we can unassign them) */
+	a.smtp_password = ""
+	a.pepper = ""
+
+	fmt.Println("Auth library closed neatly.")
 }
