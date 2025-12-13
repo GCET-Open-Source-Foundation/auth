@@ -18,6 +18,7 @@ type db_details struct {
 	username      string
 	password      string
 	database_name string
+	host          string
 }
 
 /*
@@ -44,15 +45,15 @@ type Auth struct {
 /*
 Init configures the db_details, connects to the database,
 checks schemas, and returns a fully initialized Auth struct.
-
-It now requires a context for the connection and schema check process.
+Init takes context info, db username, db password, db name, host url (e.g. localhost)
 */
-func Init(ctx context.Context, port uint16, db_user, db_pass, db_name string) (*Auth, error) {
+func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host string) (*Auth, error) {
 	db_temp := db_details{
 		port:          port,
 		username:      db_user,
 		password:      db_pass,
 		database_name: db_name,
+		host:          host,
 	}
 
 	pool, err := db_connect(ctx, &db_temp)

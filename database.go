@@ -408,7 +408,7 @@ func db_connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error)
 	u := &url.URL{
 		Scheme: "postgres",
 		User:   url.UserPassword(details.username, details.password),
-		Host:   fmt.Sprintf("localhost:%d", details.port),
+		Host:   fmt.Sprintf("%s:%d", details.host, details.port),
 		Path:   details.database_name,
 	}
 
