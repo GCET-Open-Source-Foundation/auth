@@ -6,11 +6,11 @@ import (
 )
 
 func (a *Auth) Create_permissions(username, space_name, role string) error {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
-	_, err := a.conn.Exec(
+	_, err := a.Conn.Exec(
 		context.Background(),
 		"INSERT INTO permissions(user_id, space_name, role) VALUES ($1, $2, $3)",
 		username, space_name, role,
@@ -24,7 +24,7 @@ func (a *Auth) Create_permissions(username, space_name, role string) error {
 }
 
 func (a *Auth) Check_permissions(username, space_name, role string) bool {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return false
 	}
 
@@ -39,7 +39,7 @@ func (a *Auth) Check_permissions(username, space_name, role string) bool {
 		)
 	`
 
-	err := a.conn.QueryRow(context.Background(), query, username, space_name, role).Scan(&exists)
+	err := a.Conn.QueryRow(context.Background(), query, username, space_name, role).Scan(&exists)
 	if err != nil {
 		return false
 	}
@@ -48,7 +48,7 @@ func (a *Auth) Check_permissions(username, space_name, role string) bool {
 }
 
 func (a *Auth) Delete_permission(username, space_name, role string) error {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
@@ -59,7 +59,7 @@ func (a *Auth) Delete_permission(username, space_name, role string) error {
 		AND role = $3
 	`
 
-	_, err := a.conn.Exec(context.Background(), query, username, space_name, role)
+	_, err := a.Conn.Exec(context.Background(), query, username, space_name, role)
 
 	if err != nil {
 		return err

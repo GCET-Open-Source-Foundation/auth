@@ -17,13 +17,13 @@ func generate_salt(size int) (string, error) {
 }
 
 func (a *Auth) Login_user(username, password string) bool {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return false
 	}
 
 	var storedHash, storedSalt string
 	query := "SELECT password_hash, salt FROM users WHERE user_id = $1"
-	err := a.conn.QueryRow(context.Background(), query, username).Scan(&storedHash, &storedSalt)
+	err := a.Conn.QueryRow(context.Background(), query, username).Scan(&storedHash, &storedSalt)
 	if err != nil {
 		return false
 	}
@@ -50,7 +50,7 @@ func (a *Auth) Login_jwt(token_string string) (*jwt_claims, error) {
 }
 
 func (a *Auth) Register_user(username, password string) error {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
@@ -61,7 +61,7 @@ func (a *Auth) Register_user(username, password string) error {
 
 	hash := a.Hash_password(password, salt)
 
-	_, err = a.conn.Exec(context.Background(),
+	_, err = a.Conn.Exec(context.Background(),
 		"INSERT INTO users (user_id, password_hash, salt) VALUES ($1, $2, $3)",
 		username, hash, salt,
 	)
@@ -73,7 +73,7 @@ func (a *Auth) Register_user(username, password string) error {
 }
 
 func (a *Auth) ChangePass(username, newPassword string) error {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
@@ -84,7 +84,7 @@ func (a *Auth) ChangePass(username, newPassword string) error {
 
 	newHash := a.Hash_password(newPassword, newSalt)
 
-	cmdTag, err := a.conn.Exec(context.Background(),
+	cmdTag, err := a.Conn.Exec(context.Background(),
 		"UPDATE users SET password_hash = $1, salt = $2 WHERE user_id = $3",
 		newHash, newSalt, username,
 	)
@@ -100,11 +100,11 @@ func (a *Auth) ChangePass(username, newPassword string) error {
 }
 
 func (a *Auth) Delete_user(username string) error {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
-	_, err := a.conn.Exec(
+	_, err := a.Conn.Exec(
 		context.Background(),
 		"DELETE FROM users WHERE user_id = $1",
 		username,

@@ -25,7 +25,7 @@ SendOTP generates an OTP, saves it to the DB (upsert), and emails it.
 Usage: auth.SendOTP("user@example.com")
 */
 func (a *Auth) SendOTP(user_email string) error {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first")
 	}
 	if a.smtp_host == "" {
@@ -48,7 +48,7 @@ func (a *Auth) SendOTP(user_email string) error {
 		ON CONFLICT (email) 
 		DO UPDATE SET code = $2, expires_at = $3
 	`
-	_, err = a.conn.Exec(context.Background(), query, user_email, code, expiry)
+	_, err = a.Conn.Exec(context.Background(), query, user_email, code, expiry)
 	if err != nil {
 		return fmt.Errorf("db error saving OTP: %w", err)
 	}
@@ -74,7 +74,7 @@ VerifyOTP checks if the code is correct and not expired.
 If valid, it deletes the OTP to prevent reuse.
 */
 func (a *Auth) VerifyOTP(user_email, input_code string) bool {
-	if a.conn == nil {
+	if a.Conn == nil {
 		return false
 	}
 
@@ -83,7 +83,7 @@ func (a *Auth) VerifyOTP(user_email, input_code string) bool {
 
 	/* Get the OTP */
 	query := "SELECT code, expires_at FROM otps WHERE email = $1"
-	err := a.conn.QueryRow(context.Background(), query, user_email).Scan(&storedCode, &expiry)
+	err := a.Conn.QueryRow(context.Background(), query, user_email).Scan(&storedCode, &expiry)
 	if err != nil {
 		return false /* OTP not found */
 	}
@@ -94,7 +94,7 @@ func (a *Auth) VerifyOTP(user_email, input_code string) bool {
 	}
 
 	/* Valid! Delete it. */
-	_, _ = a.conn.Exec(context.Background(), "DELETE FROM otps WHERE email = $1", user_email)
+	_, _ = a.Conn.Exec(context.Background(), "DELETE FROM otps WHERE email = $1", user_email)
 	return true
 }
 
@@ -114,8 +114,8 @@ func (a *Auth) start_otp_cleanup() {
 			select {
 			case <-ticker.C:
 				/* The Timer ticked: Do the work */
-				if a.conn != nil {
-					_, _ = a.conn.Exec(context.Background(), "DELETE FROM otps WHERE expires_at < NOW()")
+				if a.Conn != nil {
+					_, _ = a.Conn.Exec(context.Background(), "DELETE FROM otps WHERE expires_at < NOW()")
 				}
 
 			case <-a.ctx.Done():

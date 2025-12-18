@@ -19,7 +19,7 @@ func (a *Auth) create_spaces(ctx context.Context) error {
 	space_name TEXT PRIMARY KEY,
 	authority INTEGER NOT NULL
 	 )`
-	_, err := a.conn.Exec(ctx, query)
+	_, err := a.Conn.Exec(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error creating spaces table: %w", err)
 	}
@@ -34,7 +34,7 @@ func (a *Auth) create_users(ctx context.Context) error {
 	password_hash TEXT NOT NULL,
 	 salt TEXT NOT NULL
 	)`
-	_, err := a.conn.Exec(ctx, query)
+	_, err := a.Conn.Exec(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error creating users table: %w", err)
 	}
@@ -47,7 +47,7 @@ func (a *Auth) create_roles(ctx context.Context) error {
 	CREATE TABLE IF NOT EXISTS roles (
 	role TEXT PRIMARY KEY
 	)`
-	_, err := a.conn.Exec(ctx, query)
+	_, err := a.Conn.Exec(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error creating roles table: %w", err)
 	}
@@ -63,7 +63,7 @@ func (a *Auth) create_permissions(ctx context.Context) error {
 	role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
 	PRIMARY KEY (user_id, space_name, role)
 	)`
-	_, err := a.conn.Exec(ctx, query)
+	_, err := a.Conn.Exec(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error creating permissions table: %w", err)
 	}
@@ -78,7 +78,7 @@ func (a *Auth) create_otps(ctx context.Context) error {
 		code TEXT NOT NULL,
 		expires_at TIMESTAMP NOT NULL
 	)`
-	_, err := a.conn.Exec(ctx, query)
+	_, err := a.Conn.Exec(ctx, query)
 	if err != nil {
 		return fmt.Errorf("error creating otps table: %w", err)
 	}
@@ -96,7 +96,7 @@ func (a *Auth) check_spaces(ctx context.Context) error {
             WHERE table_name = 'spaces'
             ORDER BY ordinal_position;
       `
-	rows, err := a.conn.Query(ctx, query)
+	rows, err := a.Conn.Query(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query spaces schema: %w", err)
 	}
@@ -139,7 +139,7 @@ func (a *Auth) check_users(ctx context.Context) error {
 	WHERE table_name = 'users'
 	ORDER BY ordinal_position;
       `
-	rows, err := a.conn.Query(ctx, query)
+	rows, err := a.Conn.Query(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query users schema: %w", err)
 	}
@@ -177,7 +177,7 @@ func (a *Auth) check_roles(ctx context.Context) error {
             WHERE table_name = 'roles'
             ORDER BY ordinal_position;
 	      `
-	rows, err := a.conn.Query(ctx, query)
+	rows, err := a.Conn.Query(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query roles schema: %w", err)
 	}
@@ -213,7 +213,7 @@ func (a *Auth) check_permissions(ctx context.Context) error {
             WHERE table_name = 'permissions'
             ORDER BY ordinal_position;
       `
-	rows, err := a.conn.Query(ctx, query)
+	rows, err := a.Conn.Query(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query permissions schema: %w", err)
 	}
@@ -251,7 +251,7 @@ func (a *Auth) check_otps(ctx context.Context) error {
             WHERE table_name = 'otps'
             ORDER BY ordinal_position;
       `
-	rows, err := a.conn.Query(ctx, query)
+	rows, err := a.Conn.Query(ctx, query)
 	if err != nil {
 		return fmt.Errorf("failed to query otps schema: %w", err)
 	}
@@ -306,7 +306,7 @@ func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
 			WHERE table_schema = 'public'
 			AND table_name = $1
 	)`
-	err := a.conn.QueryRow(ctx, query, table).Scan(&exists)
+	err := a.Conn.QueryRow(ctx, query, table).Scan(&exists)
 	return exists, err
 }
 
@@ -400,7 +400,7 @@ Wrapper function around jackc/pgx/v5 pgx.Conn().
 Returns a *pgx.Conn structure.
 */
 
-func db_connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
+func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
 	/*
 		The password may contain multiple special characters,
 		therefore it is primodial to use, url.URL here.
@@ -417,17 +417,17 @@ func db_connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error)
 	pool, err := pgxpool.New(ctx, urlStr)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"failed to create connection pool: %w\nPlease configure Postgres correctly",
+			"failed to create Connection pool: %w\nPlease configure Postgres correctly",
 			err,
 		)
 	}
 
 	if err := pool.QueryRow(ctx, "SELECT 1").Scan(new(int)); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("failed to connect to Postgres: %w", err)
+		return nil, fmt.Errorf("failed to Connect to Postgres: %w", err)
 	}
 
-	log.Println("DB connection pool established")
+	log.Println("DB Connection pool established")
 
 	return pool, nil
 }

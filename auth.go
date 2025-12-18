@@ -27,7 +27,7 @@ Unlike the previous global-variable approach,
 this design allows the library to be safely used concurrently.
 */
 type Auth struct {
-	conn          *pgxpool.Pool
+	Conn          *pgxpool.Pool
 	argon_params  argon_parameters
 	pepper        string
 	pepper_once   sync.Once
@@ -43,7 +43,7 @@ type Auth struct {
 }
 
 /*
-Init configures the db_details, connects to the database,
+Init configures the db_details, Connects to the database,
 checks schemas, and returns a fully initialized Auth struct.
 Init takes context info, db username, db password, db name, host url (e.g. localhost)
 */
@@ -56,12 +56,12 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host stri
 		host:          host,
 	}
 
-	pool, err := db_connect(ctx, &db_temp)
+	pool, err := db_Connect(ctx, &db_temp)
 	if err != nil {
-		return nil, fmt.Errorf("db connect failed: %w", err)
+		return nil, fmt.Errorf("db Connect failed: %w", err)
 	}
 	if pool == nil {
-		return nil, fmt.Errorf("db connect returned nil connection")
+		return nil, fmt.Errorf("db Connect returned nil Connection")
 	}
 
 	/* Create a context for the Auth library's lifecycle */
@@ -70,7 +70,7 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host stri
 
 	/* No errors in init */
 	temp := &Auth{
-		conn:         pool,
+		Conn:         pool,
 		argon_params: global_default_argon,
 		ctx:          libCtx,
 		cancel:       libCancel,
@@ -107,7 +107,7 @@ func (a *Auth) SMTP_init(email, password, host, port string) error {
 
 /*
 Close performs a graceful shutdown of the Auth library.
-It stops background tasks, closes database connections, and wipes sensitive data from memory.
+It stops background tasks, closes database Connections, and wipes sensitive data from memory.
 */
 func (a *Auth) Close() {
 	/* 1. Stop background routines (OTP cleaner) */
@@ -116,9 +116,9 @@ func (a *Auth) Close() {
 	}
 
 	/* 2. Close Database Connection */
-	if a.conn != nil {
-		a.conn.Close()
-		a.conn = nil
+	if a.Conn != nil {
+		a.Conn.Close()
+		a.Conn = nil
 	}
 
 	/* 3. Wipe Sensitive Memory (Security Best Practice) */
