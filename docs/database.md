@@ -26,7 +26,7 @@ The spaces table defines “spaces” in your application, each identified by a 
 ```go
 func (a *Auth) create_users(ctx context.Context) error {
     query := `
-        CREATE TABLE IF NOT NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
             password_hash TEXT NOT NULL,
             salt TEXT NOT NULL
