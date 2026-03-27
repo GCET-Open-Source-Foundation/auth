@@ -17,37 +17,51 @@ type jwt_claims struct {
 }
 
 /*
-JWT_init sets the secret key used for signing and validating JWTs.
+JWT_init sets the secret key and an optional expiration duration for JWTs.
 
-This function should be stricly called in the global call,
-directly after calling auth.Init().
-
+It should be called immediately after auth.Init(). If no expiry is provided (or if it is <= 0),
+the library uses the default 24-hour duration. 
 Losing or changing this secret will invalidate all existing tokens.
 */
-func (a *Auth) JWT_init(secret string) error {
+func (a *Auth) JWT_init(secret string, expiry ...time.Duration) error {
 	if secret == "" {
 		return fmt.Errorf("JWT secret cannot be empty")
 	}
-
+	var effectiveExpiry time.Duration
+	if len(expiry) > 0 {
+		effectiveExpiry = expiry[0]
+	}
 	a.jwt_once.Do(func() {
 		a.jwt_secret = []byte(secret)
+		if effectiveExpiry > 0 {
+			a.jwt_expiry = effectiveExpiry
+		}
 	})
 	return nil
 }
 
 /*
-Generate_token creates a new, signed JWT for a given username
-with a specified expiry duration.
+Generate_token creates a new, signed JWT for a given username.
+It supports an optional variadic expiry_duration for backward compatibility.
+If no duration is provided, it falls back to the configured a.jwt_expiry.
 */
-func (a *Auth) Generate_token(username string, expiry_duration time.Duration) (string, error) {
-	if len(a.jwt_secret) == 0 {
-		return "", fmt.Errorf("run auth.JWT_init() first to set the JWT secret")
-	}
+func (a *Auth) Generate_token(username string, expiry_duration ...time.Duration) (string, error) {
+    if len(a.jwt_secret) == 0 {
+        return "", fmt.Errorf("run auth.JWT_init() first")
+    }
 
-	claims := jwt_claims{
-		username,
-		jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry_duration)),
+    /* Logic to use passed duration OR fallback to struct config */
+    var duration time.Duration
+    if len(expiry_duration) > 0 {
+        duration = expiry_duration[0]
+    } else {
+        duration = a.jwt_expiry
+    }
+
+    claims := jwt_claims{
+        UserID: username,
+    	RegisteredClaims: jwt.RegisteredClaims{
+        	ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			Issuer:    "gcet-auth-library",

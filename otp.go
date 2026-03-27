@@ -10,14 +10,38 @@ import (
 	"github.com/GCET-Open-Source-Foundation/auth/email"
 )
 
-/* Helper: Generates a secure 6-digit random number */
-func generate_otp() (string, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+/* OTP_init configures the OTP settings. If values are 0, defaults are used. */
+func (a *Auth) OTP_init(length int, expiry time.Duration) error {
+	if length < 4 || length > 10 {
+		return fmt.Errorf("invalid OTP length: %d (must be between 4 and 10)", length)
+	}
+	if expiry <= 0 {
+		return fmt.Errorf("invalid OTP expiry: %v", expiry)
+	}
+
+	a.otp_length = length
+	a.otp_expiry = expiry
+	return nil
+}
+
+/* Helper: Generates a secure random number based on the configured OTP length */
+func (a *Auth) generate_otp() (string, error) {
+	/* 1. Validation Guard */
+	if a.otp_length < 4 || a.otp_length > 10 {
+		return "", fmt.Errorf("invalid OTP length: %d (must be between 4 and 10)", a.otp_length)
+	}
+
+	/* 2. Calculate the max value (e.g., 10^6 = 1,000,000)*/
+	max := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(a.otp_length)), nil)
+
+	/* 3. Generate secure random number */
+	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
 		return "", err
 	}
-	/* Pad with zeros to ensure 6 digits (e.g., "001234") */
-	return fmt.Sprintf("%06d", n), nil
+
+	/* 4. Dynamically pad the string (e.g., 6 digits becomes %06d) */
+	return fmt.Sprintf("%0*d", a.otp_length, n), nil
 }
 
 /*
@@ -33,14 +57,16 @@ func (a *Auth) SendOTP(user_email string) error {
 	}
 
 	/* 1. Generate Code */
-	code, err := generate_otp()
+	code, err := a.generate_otp()
 	if err != nil {
 		return fmt.Errorf("failed to generate OTP: %w", err)
 	}
 
-	/* 2. Set Expiry (5 minutes) */
-	expiry := time.Now().Add(5 * time.Minute)
-
+	/* 2. Set Expiry (Uses the config field instead of hardcoded value) */
+	if a.otp_expiry <= 0 {
+		return fmt.Errorf("invalid OTP expiry duration: %v", a.otp_expiry)
+	}
+	expiry := time.Now().Add(a.otp_expiry)
 	/* 3. Upsert into DB (Update if email exists, Insert if new) */
 	query := `
 		INSERT INTO otps (email, code, expires_at) 
@@ -55,8 +81,9 @@ func (a *Auth) SendOTP(user_email string) error {
 
 	/* 4. Send Email */
 	subject := "Your Verification Code"
-	body := fmt.Sprintf("Your OTP is: %s\n\nValid for 5 minutes.", code)
-
+	/* Format to '5 minutes' instead of '5m0s' */
+	minutes := int(a.otp_expiry.Minutes())
+	body := fmt.Sprintf("Your OTP is: %s\n\nValid for %d minutes.", code, minutes)
 	err = email.SendEmail(
 		a.smtp_host, a.smtp_port,
 		a.smtp_email, a.smtp_password,
@@ -100,11 +127,13 @@ func (a *Auth) VerifyOTP(user_email, input_code string) bool {
 
 /*
 start_otp_cleanup is an internal function that runs in the background.
-It automatically deletes expired OTPs every 5 minutes.
+It periodically deletes expired OTPs from the database.
+The cleanup cycle is fixed (5 minutes) to ensure consistent performance
+regardless of the configured OTP expiration duration.
 */
 func (a *Auth) start_otp_cleanup() {
-	/* Hardcoded interval of 5 minutes */
-	ticker := time.NewTicker(5 * time.Minute)
+	/* Fixed 5-minute interval to prevent DB stress */
+	ticker	:=	time.NewTicker(5 * time.Minute)
 
 	go func() {
 		/* Ensure the ticker stops when we exit to prevent leaks */
