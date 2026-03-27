@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
-
+	"time"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,6 +32,9 @@ type Auth struct {
 	pepper        string
 	pepper_once   sync.Once
 	jwt_secret    []byte
+	jwt_expiry    time.Duration 
+	otp_expiry    time.Duration 
+	otp_length    int           
 	jwt_once      sync.Once
 	smtp_email    string
 	smtp_password string
@@ -72,6 +75,9 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host stri
 	temp := &Auth{
 		Conn:         pool,
 		argon_params: global_default_argon,
+		jwt_expiry:   24 * time.Hour, 
+		otp_expiry:   5 * time.Minute, 
+		otp_length:   6,               
 		ctx:          libCtx,
 		cancel:       libCancel,
 	}

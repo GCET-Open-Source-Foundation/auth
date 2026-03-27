@@ -11,15 +11,16 @@ import (
 )
 
 /* Helper: Generates a secure 6-digit random number */
-func generate_otp() (string, error) {
-	n, err := rand.Int(rand.Reader, big.NewInt(1000000))
+func (a *Auth) generate_otp() (string, error) {
+	// Calculate the max value based on length (e.g., 6 digits = 1,000,000)
+	max := new(big.Int).Exp(big.NewInt(10), big.NewInt(int64(a.otp_length)), nil)
+	n, err := rand.Int(rand.Reader, max)
 	if err != nil {
 		return "", err
 	}
-	/* Pad with zeros to ensure 6 digits (e.g., "001234") */
-	return fmt.Sprintf("%06d", n), nil
+	// Dynamically pad the string based on a.otp_length
+	return fmt.Sprintf("%0*d", a.otp_length, n), nil
 }
-
 /*
 SendOTP generates an OTP, saves it to the DB (upsert), and emails it.
 Usage: auth.SendOTP("user@example.com")
@@ -33,13 +34,13 @@ func (a *Auth) SendOTP(user_email string) error {
 	}
 
 	/* 1. Generate Code */
-	code, err := generate_otp()
+	code, err := a.generate_otp()
 	if err != nil {
 		return fmt.Errorf("failed to generate OTP: %w", err)
 	}
 
-	/* 2. Set Expiry (5 minutes) */
-	expiry := time.Now().Add(5 * time.Minute)
+/* 2. Set Expiry (Uses the config field instead of hardcoded value) */
+	expiry := time.Now().Add(a.otp_expiry)
 
 	/* 3. Upsert into DB (Update if email exists, Insert if new) */
 	query := `
@@ -55,7 +56,7 @@ func (a *Auth) SendOTP(user_email string) error {
 
 	/* 4. Send Email */
 	subject := "Your Verification Code"
-	body := fmt.Sprintf("Your OTP is: %s\n\nValid for 5 minutes.", code)
+	body := fmt.Sprintf("Your OTP is: %s\n\nValid for %v.", code, a.otp_expiry)
 
 	err = email.SendEmail(
 		a.smtp_host, a.smtp_port,
@@ -103,8 +104,8 @@ start_otp_cleanup is an internal function that runs in the background.
 It automatically deletes expired OTPs every 5 minutes.
 */
 func (a *Auth) start_otp_cleanup() {
-	/* Hardcoded interval of 5 minutes */
-	ticker := time.NewTicker(5 * time.Minute)
+	/* Uses the configured otp_expiry for the ticker interval */
+	ticker := time.NewTicker(a.otp_expiry)
 
 	go func() {
 		/* Ensure the ticker stops when we exit to prevent leaks */

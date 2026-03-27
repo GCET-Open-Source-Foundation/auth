@@ -24,13 +24,16 @@ directly after calling auth.Init().
 
 Losing or changing this secret will invalidate all existing tokens.
 */
-func (a *Auth) JWT_init(secret string) error {
+func (a *Auth) JWT_init(secret string, expiry time.Duration) error {
 	if secret == "" {
 		return fmt.Errorf("JWT secret cannot be empty")
 	}
 
 	a.jwt_once.Do(func() {
 		a.jwt_secret = []byte(secret)
+		if expiry > 0 {
+			a.jwt_expiry = expiry
+		}
 	})
 	return nil
 }
