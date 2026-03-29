@@ -1,8 +1,14 @@
-#**jwt.go**
+#**jwt.go and users.go**
 
-Security is the backbone of any application. This module handles two critical jobs:
+This document covers two files: `jwt.go` and `users.go`.
+`jwt.go` handles JWT token generation and validation.
+`users.go` handles user registration, login, password changes, and deletion.
+
+Security is the backbone of any application. Together, these modules handle two critical jobs:
 1.  **Protecting User Data:** ensuring that even if the database is stolen, user passwords remain unreadable.
 2.  **Stateless Authentication:** allowing users to stay logged in without the server needing to remember them (via JWTs), which makes the application faster and easier to scale.
+
+> **Note:** The following functions (`Register_user`, `generate_salt`, `Login_user`, `Login_jwt`, `ChangePass`, `Delete_user`) are defined in `users.go`, not `jwt.go`.
 
 ## 1. Creating an Account (`Register_user`)
 When a new user signs up, we cannot simply save their password as plain text.

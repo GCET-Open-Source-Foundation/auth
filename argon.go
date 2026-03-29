@@ -28,7 +28,7 @@ var global_default_argon = argon_parameters{
 
 /*
 A function that is not generally recommended to use unless the user have the technically knowledge.
-But incase you want to use this, please ensure this is used before any API is validated.
+But in case you want to use this, please ensure this is used before any API is validated.
 */
 func (a *Auth) Default_salt_parameters(time uint32, memory uint32, threads uint8, keyLen uint32) error {
 	/*
@@ -56,7 +56,7 @@ func (a *Auth) Default_salt_parameters(time uint32, memory uint32, threads uint8
 }
 
 /*
-This function should be stricly called in the global call and not between some
+This function should be strictly called in the global call, and not between some
 random Register API.
 
 Because we only use is_pepper_present() to check, and once the program ends, we free the memory
@@ -75,8 +75,8 @@ func (a *Auth) Pepper_init(pep string) error {
 
 /*
 Although the library holds a lot of control of the functions we are making public.
-It does make sense to make a hashing functions specially something that takes a
-string and returns an argron2 string public. This is a basic functionality any library should have.
+It does make sense to make a hashing function — specifically something that takes a
+string and returns an argon2 string public. This is a basic functionality any library should have.
 
 This returns the hashes string and the generated salt.
 */

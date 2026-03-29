@@ -403,7 +403,7 @@ Returns a *pgx.Conn structure.
 func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
 	/*
 		The password may contain multiple special characters,
-		therefore it is primodial to use, url.URL here.
+		therefore it is primordial to use, url.URL here.
 	*/
 	u := &url.URL{
 		Scheme: "postgres",

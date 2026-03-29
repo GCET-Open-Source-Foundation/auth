@@ -37,7 +37,7 @@ The function returns true if the user has the specified role in the
 specified  space and returns false if the user does not have the role in the space or if the database connection is not initialized. 
 
 ```go
-i.conn == nil {
+a.Conn == nil {
     return false
 }
 ```
