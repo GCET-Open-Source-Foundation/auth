@@ -19,7 +19,7 @@ type jwt_claims struct {
 /*
 JWT_init sets the secret key used for signing and validating JWTs.
 
-This function should be stricly called in the global call,
+This function should be strictly called in the global call,
 directly after calling auth.Init().
 
 Losing or changing this secret will invalidate all existing tokens.
