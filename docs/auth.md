@@ -12,13 +12,14 @@ type db_details struct {
 	username      string
 	password      string
 	database_name string
+	host          string
 }
 ```
 This stores the database port, password, username and database name. Its used only inside this package.
 
 ```go
 type Auth struct {
-	conn          *pgxpool.Pool
+	Conn          *pgxpool.Pool
 	argon_params  argon_parameters
 	pepper        string
 	pepper_once   sync.Once
@@ -36,7 +37,7 @@ type Auth struct {
 This struct stores everything the auth system needs.
 
 Database
-conn : - database connection pool
+Conn : - database connection pool
 
 Security
 argon_params :- password hashing settings
@@ -48,9 +49,9 @@ sync.Once:- ensures that something is set only once and prevents bugs in multi t
 Init()
 
 ```go
-func Init(ctx context.Context, port uint16, db_user, db_pass, db_name string) (*Auth, error)
+func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host string) (*Auth, error)
 ```
-This function is basically where the server starts. It first puts all the database information into a struct. Then it tried to connect to the database and returns an error incase it fails. Creating a library context allows the background tasks to run and makes way for a clean shutdown later on. Creating the Auth object makes the system exist in memory.
+This function is basically where the server starts. It first puts all the database information into a struct. Then it tried to connect to the database and returns an error in case it fails. Creating a library context allows the background tasks to run and makes way for a clean shutdown later on. Creating the Auth object makes the system exist in memory.
 
 ```go
 if err := temp.check_tables(ctx); err != nil {
