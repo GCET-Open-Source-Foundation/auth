@@ -7,7 +7,7 @@ Auth. Works with Postgres. Supports multiple auth methods (Password, JWT, OTP), 
 
 ## Usage
 
-* **`auth.Init(ctx, port, db_user, db_pass, db_name)`** - Sets up the library. Connects to Postgres, prepares internal state, and verifies database schema. Must be called before doing anything else.
+* **`auth.Init(ctx, port, db_user, db_pass, db_name, host)`** - Sets up the library. Connects to Postgres, prepares internal state, and verifies database schema. Must be called before doing anything else.
 * **`auth.JWT_init(secret)`** - Initializes the JWT signing key. Required if you intend to use stateless authentication.
 * **`auth.SMTP_init(email, password, host, port)`** - Configures the SMTP client. Required for sending OTP emails.
 * **`auth.Create_space(name, authority)`** - Creates a new space with the given name. Authority determines control level for the space. Fails if space already exists or Init() was not called.

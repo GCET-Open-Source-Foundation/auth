@@ -4,11 +4,11 @@ argon.go is the part of the auth library which handles the encryption of the pas
 
 It does this using three ideas, a salt, an optional pepper and constant-time comparison.
 
-A salt is a random, unique valye generated per password and its stored openly in the db next to the hash. It basically makes every hash unique so that the attackers can’t  out which users have the same password.
+A salt is a random, unique value generated per password and its stored openly in the db next to the hash. It basically makes every hash unique so that the attackers can’t figure out which users have the same password.
 
 A pepper is optional, it’s a secret value controlled by the server. If an attacker steals both the password and the hash (or the db itself) they wouldn’t be able to figure out the password without the pepper. (if implemented the pepper must be stored safely elsewhere).
 
-Contstant time comparison is used so that the attackers cannot predict how many characters of the attempted password are right based on how fast the comparison stops.
+Constant time comparison is used so that the attackers cannot predict how many characters of the attempted password are right based on how fast the comparison stops.
 
 ```go
 

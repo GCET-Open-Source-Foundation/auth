@@ -17,7 +17,7 @@ func (a *Auth) create_spaces(ctx context.Context) error {
             space_name TEXT PRIMARY KEY,
             authority INTEGER NOT NULL
         )`
-    _, err := a.conn.Exec(ctx, query)
+    _, err := a.Conn.Exec(ctx, query)
     ...
 }
 ```
@@ -26,12 +26,12 @@ The spaces table defines “spaces” in your application, each identified by a 
 ```go
 func (a *Auth) create_users(ctx context.Context) error {
     query := `
-        CREATE TABLE IF NOT NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
             password_hash TEXT NOT NULL,
             salt TEXT NOT NULL
         )`
-    _, err := a.conn.Exec(ctx, query)
+    _, err := a.Conn.Exec(ctx, query)
     ...
 }
 ```
@@ -42,7 +42,7 @@ func (a *Auth) create_roles(ctx context.Context) error {
         CREATE TABLE IF NOT EXISTS roles (
             role TEXT PRIMARY KEY
         )`
-    _, err := a.conn.Exec(ctx, query)
+    _, err := a.Conn.Exec(ctx, query)
     ...
 }
 ```
@@ -57,11 +57,11 @@ func (a *Auth) create_permissions(ctx context.Context) error {
             role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
             PRIMARY KEY (user_id, space_name, role)
         )`
-    _, err := a.conn.Exec(ctx, query)
+    _, err := a.Conn.Exec(ctx, query)
     ...
 }
 ```
-The permissions table basically assigns roles to users in paerticular spaces. It also ensures that if a user is deleted, the corresponding role is also deleted. (DELETE CASCADE).
+The permissions table basically assigns roles to users in particular spaces. It also ensures that if a user is deleted, the corresponding role is also deleted. (DELETE CASCADE).
 
 ```go
 func (a *Auth) create_otps(ctx context.Context) error {
@@ -71,7 +71,7 @@ func (a *Auth) create_otps(ctx context.Context) error {
             code TEXT NOT NULL,
             expires_at TIMESTAMP NOT NULL
         )`
-    _, err := a.conn.Exec(ctx, query)
+    _, err := a.Conn.Exec(ctx, query)
     ...
 }
 ```
@@ -85,7 +85,7 @@ func (a *Auth) check_spaces(ctx context.Context) error {
         WHERE table_name = 'spaces'
         ORDER BY ordinal_position;
     `
-    rows, err := a.conn.Query(ctx, query)
+    rows, err := a.Conn.Query(ctx, query)
     ...
 }
 ```
@@ -99,7 +99,7 @@ func (a *Auth) check_users(ctx context.Context) error {
         WHERE table_name = 'users'
         ORDER BY ordinal_position;
     `
-    rows, err := a.conn.Query(ctx, query)
+    rows, err := a.Conn.Query(ctx, query)
     ...
 }
 ```
@@ -113,7 +113,7 @@ func (a *Auth) check_roles(ctx context.Context) error {
         WHERE table_name = 'roles'
         ORDER BY ordinal_position;
     `
-    rows, err := a.conn.Query(ctx, query)
+    rows, err := a.Conn.Query(ctx, query)
     ...
 }
 ```
@@ -127,7 +127,7 @@ func (a *Auth) check_permissions(ctx context.Context) error {
         WHERE table_name = 'permissions'
         ORDER BY ordinal_position;
     `
-    rows, err := a.conn.Query(ctx, query)
+    rows, err := a.Conn.Query(ctx, query)
     ...
 }
 ```
@@ -141,7 +141,7 @@ func (a *Auth) check_otps(ctx context.Context) error {
         WHERE table_name = 'otps'
         ORDER BY ordinal_position;
     `
-    rows, err := a.conn.Query(ctx, query)
+    rows, err := a.Conn.Query(ctx, query)
     ...
 }
 ```
@@ -156,7 +156,7 @@ func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
             WHERE table_schema = 'public'
             AND table_name = $1
         )`
-    err := a.conn.QueryRow(ctx, query, table).Scan(&exists)
+    err := a.Conn.QueryRow(ctx, query, table).Scan(&exists)
     return exists, err
 }
 ```
@@ -189,11 +189,11 @@ func (a *Auth) check_tables(ctx context.Context) error {
 check_tables runs through each required table.For each name, it first calls table_exists; if the table is present, it runs the corresponding check function to validate the schema and if the table is missing it calls the corresponding create function to build it from scratch.
 
 ```go
-func db_connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
+func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
     u := &url.URL{
         Scheme: "postgres",
         User:   url.UserPassword(details.username, details.password),
-        Host:   fmt.Sprintf("localhost:%d", details.port),
+        Host:   fmt.Sprintf("%s:%d", details.host, details.port),
         Path:   details.database_name,
     }
     urlStr := u.String()
@@ -215,4 +215,4 @@ func db_connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error)
     return pool, nil
 }
 ```
-db_connect builds a URL using net/url instead of string concatenation.After constructing urlStr, the function creates a pgxpool.then immediately runs a SELECT 1 check: if that query fails, it closes the pool and returns an error so we know the db is not reachable yet. If success,it logs that the connection pool is ready and returns it for the auth package to use.
+db_Connect builds a URL using net/url instead of string concatenation.After constructing urlStr, the function creates a pgxpool.then immediately runs a SELECT 1 check: if that query fails, it closes the pool and returns an error so we know the db is not reachable yet. If success,it logs that the connection pool is ready and returns it for the auth package to use.

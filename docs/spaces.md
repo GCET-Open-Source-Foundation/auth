@@ -8,13 +8,13 @@ This document explains the purpose and behavior of the Create_space and Delete_s
 **Create_space**
 It creates a new space entry in the database with a name and authority level and checks whether the database connection is initialized. Then it inserts a new row into the spaces table.
 In case of a successful insert i.e when there is no duplicate space name and a database connection is already initialised, the database accepts the row and no error takes place.
-Incase a duplicate space name is given, Postgres rejects it because space_name is a primary key.
-And incase the database is not initialised, no database operation happens at all. An error message ​​"run auth.Init() first as a function outside API calls" returns.
+In case a duplicate space name is given, Postgres rejects it because space_name is a primary key.
+And in case the database is not initialised, no database operation happens at all. An error message "run auth.Init() first as a function outside API calls" returns.
 
 **Delete_space**
 This works almost in the same way, but it takes the space name to be deleted.
-Incase of a successful deletion, if the database connection exists, it runs SQL and the row is deleted.
-Incase the given space does not exist, SQL still runs successfully but no row gets affected. This is not treated as an error, but nothing is deleted and  ​​"run auth.Init() first as a function outside API calls" gets returned.
+In case of a successful deletion, if the database connection exists, it runs SQL and the row is deleted.
+In case the given space does not exist, SQL still runs successfully but no row gets affected. This is not treated as an error, and no error is returned — the deletion silently succeeds.
 
 
 
