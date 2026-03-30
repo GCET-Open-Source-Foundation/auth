@@ -86,6 +86,25 @@ func (a *Auth) create_otps(ctx context.Context) error {
 	return nil
 }
 
+func (a *Auth) create_oauth_users(ctx context.Context) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS oauth_users (
+		provider    TEXT NOT NULL,
+		provider_id TEXT NOT NULL,
+		user_id     TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+		email       TEXT,
+		name        TEXT,
+		created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+		PRIMARY KEY (provider, provider_id)
+	)`
+	_, err := a.Conn.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("error creating oauth_users table: %w", err)
+	}
+	log.Println("OAuth users table created successfully (or already exists).")
+	return nil
+}
+
 /*
 These functions now return 'error' instead of calling log.Fatal()
 */
@@ -294,6 +313,47 @@ func (a *Auth) check_otps(ctx context.Context) error {
 	return nil
 }
 
+func (a *Auth) check_oauth_users(ctx context.Context) error {
+	query := `
+		SELECT column_name, data_type
+		FROM information_schema.columns
+		WHERE table_name = 'oauth_users'
+		ORDER BY ordinal_position;
+	`
+	rows, err := a.Conn.Query(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to query oauth_users schema: %w", err)
+	}
+	defer rows.Close()
+
+	columns := map[string]string{}
+	for rows.Next() {
+		var name, dataType string
+		if err := rows.Scan(&name, &dataType); err != nil {
+			return fmt.Errorf("failed to scan oauth_users schema: %w", err)
+		}
+		columns[name] = dataType
+	}
+
+	expected := map[string]string{
+		"provider":    "text",
+		"provider_id": "text",
+		"user_id":     "text",
+		"email":       "text",
+		"name":        "text",
+		"created_at":  "timestamp without time zone",
+	}
+
+	for col, typ := range expected {
+		if t, ok := columns[col]; !ok || t != typ {
+			return fmt.Errorf("oauth_users table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
+		}
+	}
+
+	log.Println("OAuth users table schema is correct.")
+	return nil
+}
+
 /*
 Checks if the table exists or not and returns the output in boolean
 */
@@ -387,6 +447,21 @@ func (a *Auth) check_tables(ctx context.Context) error {
 			}
 		} else {
 			if err = a.create_otps(ctx); err != nil {
+				return err
+			}
+		}
+	}
+
+	check, err = a.table_exists(ctx, "oauth_users")
+	if err != nil {
+		return err
+	} else {
+		if check {
+			if err = a.check_oauth_users(ctx); err != nil {
+				return err
+			}
+		} else {
+			if err = a.create_oauth_users(ctx); err != nil {
 				return err
 			}
 		}

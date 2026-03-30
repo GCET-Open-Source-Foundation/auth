@@ -16,3 +16,4 @@ Auth. Works with Postgres. Supports multiple auth methods (Password, JWT, OTP), 
 * **`auth.Delete_permission(username, space_name, role)`** - Removes a user's role in a specific space. After this, the user loses access according to that role.
 * You can also handle users with **`auth.Register_user()`**, **`auth.Login_user()`**, **`auth.Login_jwt()`** and **`auth.Delete_user()`**.
 * For roles, use **`auth.Create_role()`** and **`auth.Delete_role()`**.
+* **Google OAuth**: Use **`auth.Google_init(clientID, clientSecret, redirectURL)`** to configure, **`auth.Google_auth_url(state)`** to get the consent URL, **`auth.Google_exchange(code)`** to exchange the authorization code, **`auth.Link_google(guser, userID)`** to link accounts, and **`auth.Login_google(providerID)`** to log in via Google.

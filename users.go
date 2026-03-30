@@ -115,3 +115,22 @@ func (a *Auth) Delete_user(username string) error {
 	}
 	return nil
 }
+
+/*
+Login_google looks up a Google user by their provider ID
+and returns the linked user_id from the database.
+*/
+func (a *Auth) Login_google(provider_id string) (string, error) {
+	if a.Conn == nil {
+		return "", fmt.Errorf("run auth.Init() first")
+	}
+
+	var userID string
+	query := "SELECT user_id FROM oauth_users WHERE provider = 'google' AND provider_id = $1"
+	err := a.Conn.QueryRow(context.Background(), query, provider_id).Scan(&userID)
+	if err != nil {
+		return "", fmt.Errorf("google account not linked: %w", err)
+	}
+
+	return userID, nil
+}

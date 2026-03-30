@@ -44,6 +44,11 @@ type Auth struct {
 	smtp_once     sync.Once
 	ctx           context.Context
 	cancel        context.CancelFunc
+
+	google_client_id     string
+	google_client_secret string
+	google_redirect_url  string
+	google_once          sync.Once
 }
 
 /*
@@ -113,6 +118,23 @@ func (a *Auth) SMTP_init(email, password, host, port string) error {
 }
 
 /*
+Google_init sets the Google OAuth credentials.
+Call this once after Init() if you want to use Google OAuth.
+*/
+func (a *Auth) Google_init(clientID, clientSecret, redirectURL string) error {
+	if clientID == "" || clientSecret == "" || redirectURL == "" {
+		return fmt.Errorf("all Google OAuth parameters (clientID, clientSecret, redirectURL) are required")
+	}
+
+	a.google_once.Do(func() {
+		a.google_client_id = clientID
+		a.google_client_secret = clientSecret
+		a.google_redirect_url = redirectURL
+	})
+	return nil
+}
+
+/*
 Close performs a graceful shutdown of the Auth library.
 It stops background tasks, closes database Connections, and wipes sensitive data from memory.
 */
@@ -140,6 +162,7 @@ func (a *Auth) Close() {
 	/* Clear string secrets (Go strings are immutable, but we can unassign them) */
 	a.smtp_password = ""
 	a.pepper = ""
+	a.google_client_secret = ""
 
 	fmt.Println("Auth library closed neatly.")
 }
