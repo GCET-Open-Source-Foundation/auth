@@ -1,9 +1,9 @@
 # **roles.go** 
 This section explains the roles-related methods in the auth package. These methods are used to create and delete roles.
-**Create_role**
-The function Create_role takes the string ‘name’ as input
+**CreateRole**
+The function CreateRole takes the string ‘name’ as input
 ```go
-func (a *Auth) Create_role(name string) error
+func (a *Auth) CreateRole(name string) error
 ```
 The function verifies that a database connection exists and if no such connection exists, an error is reported with the message
 
@@ -28,11 +28,11 @@ If any error occurs, the function returns the error stored in the variable ‘er
 ```
 return nil indicates that the Role is created 
 
-**Delete_role**
-The function Delete_role takes the string ‘name’ as input
+**DeleteRole**
+The function DeleteRole takes the string ‘name’ as input
 
 ```go
-func (a *Auth) Delete_role(name string) error
+func (a *Auth) DeleteRole(name string) error
  ```
 The function verifies that a database connection exists and if no such connection exists, an error is reported with the message
 run auth.Init() first as a function outside API calls

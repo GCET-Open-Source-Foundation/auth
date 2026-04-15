@@ -11,20 +11,20 @@ Schema validation: If the tables already exist, it checks information_schema to 
 Connection management: It builds a Postgres connection and initializes a pgx connection pool that the rest of the library uses.
 
 ```go
-func (a *Auth) create_spaces(ctx context.Context) error {
+func (a *Auth) createSpaces(ctx context.Context) error {
     query := `
         CREATE TABLE IF NOT EXISTS spaces (
-            space_name TEXT PRIMARY KEY,
+            spaceName TEXT PRIMARY KEY,
             authority INTEGER NOT NULL
         )`
     _, err := a.Conn.Exec(ctx, query)
     ...
 }
 ```
-The spaces table defines “spaces” in your application, each identified by a space_name and an integer authority.(Check spaces.MD for further clarity)
+The spaces table defines “spaces” in your application, each identified by a spaceName and an integer authority.(Check spaces.MD for further clarity)
 
 ```go
-func (a *Auth) create_users(ctx context.Context) error {
+func (a *Auth) createUsers(ctx context.Context) error {
     query := `
         CREATE TABLE IF NOT EXISTS users (
             user_id TEXT PRIMARY KEY,
@@ -37,7 +37,7 @@ func (a *Auth) create_users(ctx context.Context) error {
 ```
 The users table stores each user’s unique ID, the Argon2 hash of their password, and the salt that was used to compute that hash.
 ```go
-func (a *Auth) create_roles(ctx context.Context) error {
+func (a *Auth) createRoles(ctx context.Context) error {
     query := `
         CREATE TABLE IF NOT EXISTS roles (
             role TEXT PRIMARY KEY
@@ -49,13 +49,13 @@ func (a *Auth) create_roles(ctx context.Context) error {
 The roles table defines the set of roles that can be granted.This makes sure that only known roles are used in permissions.
 
 ```go
-func (a *Auth) create_permissions(ctx context.Context) error {
+func (a *Auth) createPermissions(ctx context.Context) error {
     query := `
         CREATE TABLE IF NOT EXISTS permissions (
             user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-            space_name TEXT NOT NULL REFERENCES spaces(space_name) ON DELETE CASCADE,
+            spaceName TEXT NOT NULL REFERENCES spaces(spaceName) ON DELETE CASCADE,
             role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
-            PRIMARY KEY (user_id, space_name, role)
+            PRIMARY KEY (user_id, spaceName, role)
         )`
     _, err := a.Conn.Exec(ctx, query)
     ...
@@ -64,7 +64,7 @@ func (a *Auth) create_permissions(ctx context.Context) error {
 The permissions table basically assigns roles to users in particular spaces. It also ensures that if a user is deleted, the corresponding role is also deleted. (DELETE CASCADE).
 
 ```go
-func (a *Auth) create_otps(ctx context.Context) error {
+func (a *Auth) createOTPs(ctx context.Context) error {
     query := `
         CREATE TABLE IF NOT EXISTS otps (
             email TEXT PRIMARY KEY,
@@ -78,7 +78,7 @@ func (a *Auth) create_otps(ctx context.Context) error {
  Each row stores an email, the OTP code, and timestamp after which the code should no longer be accepted.
 
 ```go
-func (a *Auth) check_spaces(ctx context.Context) error {
+func (a *Auth) checkSpaces(ctx context.Context) error {
     query := `
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns
@@ -92,7 +92,7 @@ func (a *Auth) check_spaces(ctx context.Context) error {
 (Check spaces.md for information related to this function.)
 
 ```go
-func (a *Auth) check_users(ctx context.Context) error {
+func (a *Auth) checkUsers(ctx context.Context) error {
     query := `
         SELECT column_name, data_type
         FROM information_schema.columns
@@ -103,10 +103,10 @@ func (a *Auth) check_users(ctx context.Context) error {
     ...
 }
 ```
-check_users checks the users table,making sure that the user_id, password_hash, and salt are present and all of type text. If someone has modified the schema manually this check will fail and force you to resolve the mismatch.
+checkUsers checks the users table,making sure that the user_id, password_hash, and salt are present and all of type text. If someone has modified the schema manually this check will fail and force you to resolve the mismatch.
 
 ```go
-func (a *Auth) check_roles(ctx context.Context) error {
+func (a *Auth) checkRoles(ctx context.Context) error {
     query := `
         SELECT column_name, data_type
         FROM information_schema.columns
@@ -117,10 +117,10 @@ func (a *Auth) check_roles(ctx context.Context) error {
     ...
 }
 ```
-check_roles verifies that the roles table has a single role column of type text. Any deviation from that expected gives error.
+checkRoles verifies that the roles table has a single role column of type text. Any deviation from that expected gives error.
 
 ```go
-func (a *Auth) check_permissions(ctx context.Context) error {
+func (a *Auth) checkPermissions(ctx context.Context) error {
     query := `
         SELECT column_name, data_type
         FROM information_schema.columns
@@ -131,10 +131,10 @@ func (a *Auth) check_permissions(ctx context.Context) error {
     ...
 }
 ```
-check_permissions ensures that permissions has user_id, space_name, and role columns, all of type text. The function only checks column types here.
+checkPermissions ensures that permissions has user_id, spaceName, and role columns, all of type text. The function only checks column types here.
 
 ```go
-func (a *Auth) check_otps(ctx context.Context) error {
+func (a *Auth) checkOTPs(ctx context.Context) error {
     query := `
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns
@@ -147,7 +147,7 @@ func (a *Auth) check_otps(ctx context.Context) error {
 ```
 it checks the data type and nullability of email, code, and expires_at.
 ```go
-func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
+func (a *Auth) tableExists(ctx context.Context, table string) (bool, error) {
     var exists bool
     query := `
         SELECT EXISTS (
@@ -160,23 +160,23 @@ func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
     return exists, err
 }
 ```
-table_exists asks Postgres whether a named table exists in the schema. It returns a boolean and an error so callers can distinguish “does not exist” from an error.
+tableExists asks Postgres whether a named table exists in the schema. It returns a boolean and an error so callers can distinguish “does not exist” from an error.
 
 ```go
-func (a *Auth) check_tables(ctx context.Context) error {
+func (a *Auth) checkTables(ctx context.Context) error {
     var check bool = false
     var err error = nil
 
-    check, err = a.table_exists(ctx, "spaces")
+    check, err = a.tableExists(ctx, "spaces")
     if err != nil {
         return err
     } else {
         if check {
-            if err = a.check_spaces(ctx); err != nil {
+            if err = a.checkSpaces(ctx); err != nil {
                 return err
             }
         } else {
-            if err = a.create_spaces(ctx); err != nil {
+            if err = a.createSpaces(ctx); err != nil {
                 return err
             }
         }
@@ -186,15 +186,15 @@ func (a *Auth) check_tables(ctx context.Context) error {
     return nil
 }
 ```
-check_tables runs through each required table.For each name, it first calls table_exists; if the table is present, it runs the corresponding check function to validate the schema and if the table is missing it calls the corresponding create function to build it from scratch.
+checkTables runs through each required table.For each name, it first calls tableExists; if the table is present, it runs the corresponding check function to validate the schema and if the table is missing it calls the corresponding create function to build it from scratch.
 
 ```go
-func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
+func dbConnect(ctx context.Context, details *dbDetails) (*pgxpool.Pool, error) {
     u := &url.URL{
         Scheme: "postgres",
         User:   url.UserPassword(details.username, details.password),
         Host:   fmt.Sprintf("%s:%d", details.host, details.port),
-        Path:   details.database_name,
+        Path:   details.databaseName,
     }
     urlStr := u.String()
 
@@ -215,4 +215,4 @@ func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error)
     return pool, nil
 }
 ```
-db_Connect builds a URL using net/url instead of string concatenation.After constructing urlStr, the function creates a pgxpool.then immediately runs a SELECT 1 check: if that query fails, it closes the pool and returns an error so we know the db is not reachable yet. If success,it logs that the connection pool is ready and returns it for the auth package to use.
+dbConnect builds a URL using net/url instead of string concatenation.After constructing urlStr, the function creates a pgxpool.then immediately runs a SELECT 1 check: if that query fails, it closes the pool and returns an error so we know the db is not reachable yet. If success,it logs that the connection pool is ready and returns it for the auth package to use.

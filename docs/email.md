@@ -3,7 +3,7 @@ In an authentication system, we often need to verify that a user actually owns t
 
 **Function Signature**
 ```Go
-func SendEmail(host, port, fromEmail, password, toEmail, subject, body string) error
+func Send(host, port, fromEmail, password, toEmail, subject, body string) error
 ```
 **Parameters**
 host: The hostname of the SMTP server (e.g., smtp.gmail.com).
