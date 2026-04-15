@@ -14,4 +14,6 @@ var (
 	ErrSMTPNotInitialized  = errors.New("smtp not initialized")
 	ErrJWTSecretMissing    = errors.New("jwt secret not initialized")
 	ErrInvalidInput        = errors.New("invalid input provided")
+	ErrInvalidEmail        = errors.New("invalid email format")
+	ErrEmptyInput          = errors.New("required field cannot be empty")
 )

@@ -46,6 +46,9 @@ It supports an optional variadic expiryDuration for backward compatibility.
 If no duration is provided, it falls back to the configured a.jwtExpiry.
 */
 func (a *Auth) GenerateToken(username string, expiryDuration ...time.Duration) (string, error) {
+	if username == "" {
+		return "", ErrEmptyInput
+	}
 	if len(a.jwtSecret) == 0 {
 		return "", ErrNotInitialized
 	}
