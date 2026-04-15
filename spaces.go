@@ -2,12 +2,11 @@ package auth
 
 import (
 	"context"
-	"fmt"
 )
 
 func (a *Auth) CreateSpace(name string, authority int) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	_, err := a.Conn.Exec(context.Background(),
@@ -24,7 +23,7 @@ func (a *Auth) CreateSpace(name string, authority int) error {
 
 func (a *Auth) DeleteSpace(name string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	_, err := a.Conn.Exec(

@@ -16,23 +16,23 @@ func generateSalt(size int) (string, error) {
 	return base64.RawStdEncoding.EncodeToString(salt), nil
 }
 
-func (a *Auth) LoginUser(username, password string) bool {
+func (a *Auth) LoginUser(username, password string) error {
 	if a.Conn == nil {
-		return false
+		return ErrDatabaseUnavailable
 	}
 
 	var storedHash, storedSalt string
 	query := "SELECT password_hash, salt FROM users WHERE user_id = $1"
 	err := a.Conn.QueryRow(context.Background(), query, username).Scan(&storedHash, &storedSalt)
 	if err != nil {
-		return false
+		return ErrUserNotFound
 	}
 
 	if !a.comparePasswords(password, storedSalt, storedHash) {
-		return false
+		return ErrInvalidCredentials
 	}
 
-	return true
+	return nil
 }
 
 /*
@@ -51,7 +51,7 @@ func (a *Auth) LoginJWT(tokenString string) (*JWTClaims, error) {
 
 func (a *Auth) RegisterUser(username, password string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	salt, err := generateSalt(32)
@@ -74,12 +74,12 @@ func (a *Auth) RegisterUser(username, password string) error {
 
 func (a *Auth) ChangePass(username, newPassword string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	newSalt, err := generateSalt(32)
 	if err != nil {
-		return fmt.Errorf("could not generate new salt: %w", err)
+		return fmt.Errorf("%w: could not generate new salt: %v", ErrInvalidInput, err)
 	}
 
 	newHash := a.HashPassword(newPassword, newSalt)
@@ -89,11 +89,11 @@ func (a *Auth) ChangePass(username, newPassword string) error {
 		newHash, newSalt, username,
 	)
 	if err != nil {
-		return fmt.Errorf("database error while updating password: %w", err)
+		return fmt.Errorf("%w: database error while updating password: %v", ErrDatabaseUnavailable, err)
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return fmt.Errorf("user '%s' not found", username)
+		return ErrUserNotFound
 	}
 
 	return nil
@@ -101,7 +101,7 @@ func (a *Auth) ChangePass(username, newPassword string) error {
 
 func (a *Auth) DeleteUser(username string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	_, err := a.Conn.Exec(
