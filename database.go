@@ -119,7 +119,7 @@ func (a *Auth) checkSpaces(ctx context.Context) error {
 
 	expected := map[string]string{
 		"spaceName": "text",
-		"authority":  "integer",
+		"authority": "integer",
 	}
 
 	for col, typ := range expected {
@@ -229,9 +229,9 @@ func (a *Auth) checkPermissions(ctx context.Context) error {
 	}
 
 	expected := map[string]string{
-		"user_id":    "text",
+		"user_id":   "text",
 		"spaceName": "text",
-		"role":       "text",
+		"role":      "text",
 	}
 
 	for col, typ := range expected {

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
-	
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -15,11 +15,11 @@ can be held, and the global var right below this
 is used at Init func to define a main db here.
 */
 type dbDetails struct {
-	port          uint16
-	username      string
-	password      string
+	port         uint16
+	username     string
+	password     string
 	databaseName string
-	host          string
+	host         string
 }
 
 /*
@@ -28,22 +28,22 @@ Unlike the previous global-variable approach,
 this design allows the library to be safely used concurrently.
 */
 type Auth struct {
-	Conn          *pgxpool.Pool
+	Conn         *pgxpool.Pool
 	argonParams  argonParameters
-	pepper        string
+	pepper       string
 	pepperOnce   sync.Once
 	jwtSecret    []byte
-	jwtExpiry    time.Duration 
-	otpExpiry    time.Duration 
-	otpLength    int           
+	jwtExpiry    time.Duration
+	otpExpiry    time.Duration
+	otpLength    int
 	jwtOnce      sync.Once
 	smtpEmail    string
 	smtpPassword string
 	smtpHost     string
 	smtpPort     string
-	smtp_once     sync.Once
-	ctx           context.Context
-	cancel        context.CancelFunc
+	smtp_once    sync.Once
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 /*
@@ -53,19 +53,19 @@ Init takes context info, db username, db password, db name, host url (e.g. local
 */
 func Init(ctx context.Context, port uint16, dbUser, dbPass, dbName, host string) (*Auth, error) {
 	dbTemp := dbDetails{
-		port:          port,
-		username:      dbUser,
-		password:      dbPass,
+		port:         port,
+		username:     dbUser,
+		password:     dbPass,
 		databaseName: dbName,
-		host:          host,
+		host:         host,
 	}
 
 	pool, err := dbConnect(ctx, &dbTemp)
 	if err != nil {
-		return nil, fmt.Errorf("db Connect failed: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
 	}
 	if pool == nil {
-		return nil, fmt.Errorf("db Connect returned nil Connection")
+		return nil, ErrDatabaseUnavailable
 	}
 
 	/* Create a context for the Auth library's lifecycle */
@@ -74,18 +74,18 @@ func Init(ctx context.Context, port uint16, dbUser, dbPass, dbName, host string)
 
 	/* No errors in init */
 	temp := &Auth{
-		Conn:         pool,
+		Conn:        pool,
 		argonParams: globalDefaultArgon,
-		jwtExpiry:   24 * time.Hour, 
-		otpExpiry:   5 * time.Minute, 
-		otpLength:   6,               
-		ctx:          libCtx,
-		cancel:       libCancel,
+		jwtExpiry:   24 * time.Hour,
+		otpExpiry:   5 * time.Minute,
+		otpLength:   6,
+		ctx:         libCtx,
+		cancel:      libCancel,
 	}
 
 	if err := temp.checkTables(ctx); err != nil {
 		pool.Close()
-		return nil, fmt.Errorf("database schema check failed: %w", err)
+		return nil, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
 	}
 	/* start the background OTP cleaner */
 	temp.startOTPCleanup()
@@ -100,7 +100,7 @@ It stores the credentials in memory only.
 */
 func (a *Auth) SMTPInit(email, password, host, port string) error {
 	if email == "" || password == "" || host == "" || port == "" {
-		return fmt.Errorf("all SMTP parameters (email, password, host, port) are required")
+		return fmt.Errorf("%w: all SMTP parameters are required", ErrInvalidInput)
 	}
 
 	a.smtp_once.Do(func() {
