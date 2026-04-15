@@ -165,3 +165,49 @@ func (a *Auth) startOTPCleanup() {
 		}
 	}()
 }
+
+func (a *Auth) OTPExists(userEmail string) (bool, error) {
+	if _, err := mail.ParseAddress(userEmail); err != nil {
+		return false, ErrInvalidEmail
+	}
+	if a.Conn == nil {
+		return false, ErrDatabaseUnavailable
+	}
+
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM otps WHERE email = $1 AND expires_at > NOW())"
+	err := a.Conn.QueryRow(context.Background(), query, userEmail).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
+	}
+
+	return exists, nil
+}
+
+func (a *Auth) ListActiveOTPs(limit, offset int) ([]string, error) {
+	if a.Conn == nil {
+		return nil, ErrDatabaseUnavailable
+	}
+
+	query := "SELECT email FROM otps WHERE expires_at > NOW() LIMIT $1 OFFSET $2"
+	rows, err := a.Conn.Query(context.Background(), query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
+	}
+	defer rows.Close()
+
+	var emails []string
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err != nil {
+			return nil, fmt.Errorf("failed to scan email: %w", err)
+		}
+		emails = append(emails, email)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return emails, nil
+}

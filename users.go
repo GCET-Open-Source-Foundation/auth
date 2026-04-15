@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"net/mail"
 )
 
 func generateSalt(size int) (string, error) {
@@ -114,4 +115,53 @@ func (a *Auth) DeleteUser(username string) error {
 		return err
 	}
 	return nil
+}
+
+type User struct {
+	UserID string `json:"user_id"`
+}
+
+func (a *Auth) UserExists(userEmail string) (bool, error) {
+	if _, err := mail.ParseAddress(userEmail); err != nil {
+		return false, ErrInvalidEmail
+	}
+	if a.Conn == nil {
+		return false, ErrDatabaseUnavailable
+	}
+
+	var exists bool
+	query := "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)"
+	err := a.Conn.QueryRow(context.Background(), query, userEmail).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
+	}
+	return exists, nil
+}
+
+func (a *Auth) ListUsers(limit, offset int) ([]User, error) {
+	if a.Conn == nil {
+		return nil, ErrDatabaseUnavailable
+	}
+
+	query := "SELECT user_id FROM users LIMIT $1 OFFSET $2"
+	rows, err := a.Conn.Query(context.Background(), query, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		if err := rows.Scan(&u.UserID); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, u)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return users, nil
 }
