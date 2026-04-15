@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"net/mail"
 	"time"
 
 	"github.com/GCET-Open-Source-Foundation/auth/email"
@@ -49,6 +50,9 @@ SendOTP generates an OTP, saves it to the DB (upsert), and emails it.
 Usage: auth.SendOTP("user@example.com")
 */
 func (a *Auth) SendOTP(userEmail string) error {
+	if _, err := mail.ParseAddress(userEmail); err != nil {
+		return ErrInvalidEmail
+	}
 	if a.Conn == nil {
 		return ErrNotInitialized
 	}
@@ -101,6 +105,9 @@ VerifyOTP checks if the code is correct and not expired.
 If valid, it deletes the OTP to prevent reuse.
 */
 func (a *Auth) VerifyOTP(userEmail, inputCode string) error {
+	if _, err := mail.ParseAddress(userEmail); err != nil {
+		return ErrInvalidEmail
+	}
 	if a.Conn == nil {
 		return ErrDatabaseUnavailable
 	}
