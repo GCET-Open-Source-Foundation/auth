@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"sync"
 	"time"
 
@@ -52,6 +53,9 @@ checks schemas, and returns a fully initialized Auth struct.
 Init takes context info, db username, db password, db name, host url (e.g. localhost)
 */
 func Init(ctx context.Context, port uint16, dbUser, dbPass, dbName, host string) (*Auth, error) {
+	if dbUser == "" || dbName == "" || host == "" {
+		return nil, ErrEmptyInput
+	}
 	dbTemp := dbDetails{
 		port:         port,
 		username:     dbUser,
@@ -100,7 +104,10 @@ It stores the credentials in memory only.
 */
 func (a *Auth) SMTPInit(email, password, host, port string) error {
 	if email == "" || password == "" || host == "" || port == "" {
-		return fmt.Errorf("%w: all SMTP parameters are required", ErrInvalidInput)
+		return ErrEmptyInput
+	}
+	if _, err := mail.ParseAddress(email); err != nil {
+		return ErrInvalidEmail
 	}
 
 	a.smtp_once.Do(func() {
