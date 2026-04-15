@@ -35,16 +35,16 @@ func (a *Auth) DefaultSaltParameters(time uint32, memory uint32, threads uint8, 
 		Some securtiy measures we ensure, this doesn't allow you to shoot yourself in foot completely
 	*/
 	if time == 0 {
-		return fmt.Errorf("time (iterations) cannot be zero")
+		return fmt.Errorf("%w: time (iterations) cannot be zero", ErrInvalidInput)
 	}
 	if memory < 8*1024 {
-		return fmt.Errorf("memory too low: must be at least 8MB")
+		return fmt.Errorf("%w: memory too low: must be at least 8MB", ErrInvalidInput)
 	}
 	if threads == 0 {
-		return fmt.Errorf("threads cannot be zero")
+		return fmt.Errorf("%w: threads cannot be zero", ErrInvalidInput)
 	}
 	if keyLen < 16 {
-		return fmt.Errorf("key length too small: must be at least 16 bytes")
+		return fmt.Errorf("%w: key length too small: must be at least 16 bytes", ErrInvalidInput)
 	}
 
 	a.argonParams.time = time
@@ -64,7 +64,7 @@ so therefore, we need to always send the pepper first directly after calling aut
 */
 func (a *Auth) PepperInit(pep string) error {
 	if pep == "" {
-		return fmt.Errorf("pepper cannot be empty")
+		return fmt.Errorf("%w: pepper cannot be empty", ErrInvalidInput)
 	}
 
 	a.pepperOnce.Do(func() {

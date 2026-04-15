@@ -13,10 +13,10 @@ import (
 /* OTPInit configures the OTP settings. If values are 0, defaults are used. */
 func (a *Auth) OTPInit(length int, expiry time.Duration) error {
 	if length < 4 || length > 10 {
-		return fmt.Errorf("invalid OTP length: %d (must be between 4 and 10)", length)
+		return fmt.Errorf("%w: length %d (must be between 4 and 10)", ErrInvalidInput, length)
 	}
 	if expiry <= 0 {
-		return fmt.Errorf("invalid OTP expiry: %v", expiry)
+		return fmt.Errorf("%w: expiry %v", ErrInvalidInput, expiry)
 	}
 
 	a.otpLength = length
@@ -28,7 +28,7 @@ func (a *Auth) OTPInit(length int, expiry time.Duration) error {
 func (a *Auth) generateOTP() (string, error) {
 	/* 1. Validation Guard */
 	if a.otpLength < 4 || a.otpLength > 10 {
-		return "", fmt.Errorf("invalid OTP length: %d (must be between 4 and 10)", a.otpLength)
+		return "", fmt.Errorf("%w: length %d (must be between 4 and 10)", ErrInvalidInput, a.otpLength)
 	}
 
 	/* 2. Calculate the max value (e.g., 10^6 = 1,000,000)*/
@@ -50,10 +50,10 @@ Usage: auth.SendOTP("user@example.com")
 */
 func (a *Auth) SendOTP(userEmail string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first")
+		return ErrNotInitialized
 	}
 	if a.smtpHost == "" {
-		return fmt.Errorf("run auth.SMTPInit() first")
+		return ErrSMTPNotInitialized
 	}
 
 	/* 1. Generate Code */
@@ -64,7 +64,7 @@ func (a *Auth) SendOTP(userEmail string) error {
 
 	/* 2. Set Expiry (Uses the config field instead of hardcoded value) */
 	if a.otpExpiry <= 0 {
-		return fmt.Errorf("invalid OTP expiry duration: %v", a.otpExpiry)
+		return fmt.Errorf("%w: duration %v", ErrInvalidInput, a.otpExpiry)
 	}
 	expiry := time.Now().Add(a.otpExpiry)
 	/* 3. Upsert into DB (Update if email exists, Insert if new) */
@@ -100,9 +100,9 @@ func (a *Auth) SendOTP(userEmail string) error {
 VerifyOTP checks if the code is correct and not expired.
 If valid, it deletes the OTP to prevent reuse.
 */
-func (a *Auth) VerifyOTP(userEmail, inputCode string) bool {
+func (a *Auth) VerifyOTP(userEmail, inputCode string) error {
 	if a.Conn == nil {
-		return false
+		return ErrDatabaseUnavailable
 	}
 
 	var storedCode string
@@ -112,17 +112,20 @@ func (a *Auth) VerifyOTP(userEmail, inputCode string) bool {
 	query := "SELECT code, expires_at FROM otps WHERE email = $1"
 	err := a.Conn.QueryRow(context.Background(), query, userEmail).Scan(&storedCode, &expiry)
 	if err != nil {
-		return false /* OTP not found */
+		return ErrInvalidOTP /* OTP not found */
 	}
 
 	/* Check match and expiry */
-	if storedCode != inputCode || time.Now().After(expiry) {
-		return false
+	if storedCode != inputCode {
+		return ErrInvalidOTP
+	}
+	if time.Now().After(expiry) {
+		return ErrOTPExpired
 	}
 
 	/* Valid! Delete it. */
 	_, _ = a.Conn.Exec(context.Background(), "DELETE FROM otps WHERE email = $1", userEmail)
-	return true
+	return nil
 }
 
 /*
@@ -133,7 +136,7 @@ regardless of the configured OTP expiration duration.
 */
 func (a *Auth) startOTPCleanup() {
 	/* Fixed 5-minute interval to prevent DB stress */
-	ticker	:=	time.NewTicker(5 * time.Minute)
+	ticker := time.NewTicker(5 * time.Minute)
 
 	go func() {
 		/* Ensure the ticker stops when we exit to prevent leaks */

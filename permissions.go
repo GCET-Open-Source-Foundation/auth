@@ -2,12 +2,11 @@ package auth
 
 import (
 	"context"
-	"fmt"
 )
 
 func (a *Auth) CreatePermissions(username, spaceName, role string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	_, err := a.Conn.Exec(
@@ -23,9 +22,9 @@ func (a *Auth) CreatePermissions(username, spaceName, role string) error {
 	return nil
 }
 
-func (a *Auth) CheckPermissions(username, spaceName, role string) bool {
+func (a *Auth) CheckPermissions(username, spaceName, role string) error {
 	if a.Conn == nil {
-		return false
+		return ErrNotInitialized
 	}
 
 	var exists bool
@@ -41,15 +40,19 @@ func (a *Auth) CheckPermissions(username, spaceName, role string) bool {
 
 	err := a.Conn.QueryRow(context.Background(), query, username, spaceName, role).Scan(&exists)
 	if err != nil {
-		return false
+		return ErrDatabaseUnavailable
 	}
 
-	return exists
+	if !exists {
+		return ErrInvalidCredentials
+	}
+
+	return nil
 }
 
 func (a *Auth) DeletePermission(username, spaceName, role string) error {
 	if a.Conn == nil {
-		return fmt.Errorf("run auth.Init() first as a function outside API calls")
+		return ErrNotInitialized
 	}
 
 	query := `
