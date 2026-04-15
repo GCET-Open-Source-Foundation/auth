@@ -7,11 +7,11 @@ pgxpool- PostgreSQL connection
 
 ```go
 
-type db_details struct {
+type dbDetails struct {
 	port          uint16
 	username      string
 	password      string
-	database_name string
+	databaseName string
 	host          string
 }
 ```
@@ -20,15 +20,15 @@ This stores the database port, password, username and database name. Its used on
 ```go
 type Auth struct {
 	Conn          *pgxpool.Pool
-	argon_params  argon_parameters
+	argonParams  argonParameters
 	pepper        string
-	pepper_once   sync.Once
-	jwt_secret    []byte
-	jwt_once      sync.Once
-	smtp_email    string
-	smtp_password string
-	smtp_host     string
-	smtp_port     string
+	pepperOnce   sync.Once
+	jwtSecret    []byte
+	jwtOnce      sync.Once
+	smtpEmail    string
+	smtpPassword string
+	smtpHost     string
+	smtpPort     string
 	smtp_once     sync.Once
 	ctx           context.Context
 	cancel        context.CancelFunc
@@ -40,7 +40,7 @@ Database
 Conn : - database connection pool
 
 Security
-argon_params :- password hashing settings
+argonParams :- password hashing settings
 pepper:- extra secret for hashing passwords
 Jwt_secrets:- secret key for JWT tokens
 
@@ -49,12 +49,12 @@ sync.Once:- ensures that something is set only once and prevents bugs in multi t
 Init()
 
 ```go
-func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host string) (*Auth, error)
+func Init(ctx context.Context, port uint16, dbUser, dbPass, dbName, host string) (*Auth, error)
 ```
 This function is basically where the server starts. It first puts all the database information into a struct. Then it tried to connect to the database and returns an error in case it fails. Creating a library context allows the background tasks to run and makes way for a clean shutdown later on. Creating the Auth object makes the system exist in memory.
 
 ```go
-if err := temp.check_tables(ctx); err != nil {
+if err := temp.checkTables(ctx); err != nil {
 	pool.Close()
 	return nil, err
 }
@@ -62,13 +62,13 @@ if err := temp.check_tables(ctx); err != nil {
 This ensures the required tables exist and prevents runtime crashes later.
 
 ```go
-temp.start_otp_cleanup()
+temp.startOTPCleanup()
 ```
 This runs a background routine and periodically removes expired OTPs
 
-SMTP_init()
+SMTPInit()
 ```go
-func (a *Auth) SMTP_init(email, password, host, port string) error
+func (a *Auth) SMTPInit(email, password, host, port string) error
 ```
 This function stores SMTP details and is needed for sending otp emails. It also checks empty values.
 sync.Once can only be used once

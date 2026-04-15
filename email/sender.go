@@ -6,10 +6,10 @@ import (
 )
 
 /*
-SendEmail is a helper function that uses the SMTP protocol to send a message.
+Send is a helper function that uses the SMTP protocol to send a message.
 It handles the authentication and message formatting.
 */
-func SendEmail(host, port, fromEmail, password, toEmail, subject, body string) error {
+func Send(host, port, fromEmail, password, toEmail, subject, body string) error {
 	/* Set up authentication information. */
 	auth := smtp.PlainAuth("", fromEmail, password, host)
 

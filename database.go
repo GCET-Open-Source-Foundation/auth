@@ -13,10 +13,10 @@ import (
 Creates the needed schema from scratch for prompted table.
 Expects table to not be present at all.
 */
-func (a *Auth) create_spaces(ctx context.Context) error {
+func (a *Auth) createSpaces(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS spaces (
-	space_name TEXT PRIMARY KEY,
+	spaceName TEXT PRIMARY KEY,
 	authority INTEGER NOT NULL
 	 )`
 	_, err := a.Conn.Exec(ctx, query)
@@ -27,7 +27,7 @@ func (a *Auth) create_spaces(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) create_users(ctx context.Context) error {
+func (a *Auth) createUsers(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS users (
 	user_id TEXT PRIMARY KEY,
@@ -42,7 +42,7 @@ func (a *Auth) create_users(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) create_roles(ctx context.Context) error {
+func (a *Auth) createRoles(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS roles (
 	role TEXT PRIMARY KEY
@@ -55,13 +55,13 @@ func (a *Auth) create_roles(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) create_permissions(ctx context.Context) error {
+func (a *Auth) createPermissions(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS permissions (
 	user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-	space_name TEXT NOT NULL REFERENCES spaces(space_name) ON DELETE CASCADE,
+	spaceName TEXT NOT NULL REFERENCES spaces(spaceName) ON DELETE CASCADE,
 	role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
-	PRIMARY KEY (user_id, space_name, role)
+	PRIMARY KEY (user_id, spaceName, role)
 	)`
 	_, err := a.Conn.Exec(ctx, query)
 	if err != nil {
@@ -71,7 +71,7 @@ func (a *Auth) create_permissions(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) create_otps(ctx context.Context) error {
+func (a *Auth) createOTPs(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS otps (
 		email TEXT PRIMARY KEY,
@@ -89,7 +89,7 @@ func (a *Auth) create_otps(ctx context.Context) error {
 /*
 These functions now return 'error' instead of calling log.Fatal()
 */
-func (a *Auth) check_spaces(ctx context.Context) error {
+func (a *Auth) checkSpaces(ctx context.Context) error {
 	query := `
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns
@@ -118,7 +118,7 @@ func (a *Auth) check_spaces(ctx context.Context) error {
 	}
 
 	expected := map[string]string{
-		"space_name": "text",
+		"spaceName": "text",
 		"authority":  "integer",
 	}
 
@@ -132,7 +132,7 @@ func (a *Auth) check_spaces(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) check_users(ctx context.Context) error {
+func (a *Auth) checkUsers(ctx context.Context) error {
 	query := `
 	SELECT column_name, data_type
 	FROM information_schema.columns
@@ -170,7 +170,7 @@ func (a *Auth) check_users(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) check_roles(ctx context.Context) error {
+func (a *Auth) checkRoles(ctx context.Context) error {
 	query := `
             SELECT column_name, data_type
             FROM information_schema.columns
@@ -206,7 +206,7 @@ func (a *Auth) check_roles(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) check_permissions(ctx context.Context) error {
+func (a *Auth) checkPermissions(ctx context.Context) error {
 	query := `
             SELECT column_name, data_type
             FROM information_schema.columns
@@ -230,7 +230,7 @@ func (a *Auth) check_permissions(ctx context.Context) error {
 
 	expected := map[string]string{
 		"user_id":    "text",
-		"space_name": "text",
+		"spaceName": "text",
 		"role":       "text",
 	}
 
@@ -244,7 +244,7 @@ func (a *Auth) check_permissions(ctx context.Context) error {
 	return nil
 }
 
-func (a *Auth) check_otps(ctx context.Context) error {
+func (a *Auth) checkOTPs(ctx context.Context) error {
 	query := `
             SELECT column_name, data_type, is_nullable
             FROM information_schema.columns
@@ -297,7 +297,7 @@ func (a *Auth) check_otps(ctx context.Context) error {
 /*
 Checks if the table exists or not and returns the output in boolean
 */
-func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
+func (a *Auth) tableExists(ctx context.Context, table string) (bool, error) {
 	var exists bool
 	query := `
 		SELECT EXISTS (
@@ -313,80 +313,80 @@ func (a *Auth) table_exists(ctx context.Context, table string) (bool, error) {
 /*
 Systematically checks all tables and returns an error if any check fails.
 */
-func (a *Auth) check_tables(ctx context.Context) error {
+func (a *Auth) checkTables(ctx context.Context) error {
 	var check bool = false
 	var err error = nil
 
-	check, err = a.table_exists(ctx, "spaces")
+	check, err = a.tableExists(ctx, "spaces")
 	if err != nil {
 		return err
 	} else {
 		if check {
-			if err = a.check_spaces(ctx); err != nil {
+			if err = a.checkSpaces(ctx); err != nil {
 				return err
 			}
 		} else {
-			if err = a.create_spaces(ctx); err != nil {
+			if err = a.createSpaces(ctx); err != nil {
 				return err
 			}
 		}
 	}
 
-	check, err = a.table_exists(ctx, "users")
+	check, err = a.tableExists(ctx, "users")
 	if err != nil {
 		return err
 	} else {
 		if check {
-			if err = a.check_users(ctx); err != nil {
+			if err = a.checkUsers(ctx); err != nil {
 				return err
 			}
 		} else {
-			if err = a.create_users(ctx); err != nil {
+			if err = a.createUsers(ctx); err != nil {
 				return err
 			}
 		}
 	}
 
-	check, err = a.table_exists(ctx, "roles")
+	check, err = a.tableExists(ctx, "roles")
 	if err != nil {
 		return err
 	} else {
 		if check {
-			if err = a.check_roles(ctx); err != nil {
+			if err = a.checkRoles(ctx); err != nil {
 				return err
 			}
 		} else {
-			if err = a.create_roles(ctx); err != nil {
+			if err = a.createRoles(ctx); err != nil {
 				return err
 			}
 		}
 	}
 
-	check, err = a.table_exists(ctx, "permissions")
+	check, err = a.tableExists(ctx, "permissions")
 	if err != nil {
 		return err
 	} else {
 		if check {
-			if err = a.check_permissions(ctx); err != nil {
+			if err = a.checkPermissions(ctx); err != nil {
 				return err
 			}
 		} else {
-			if err = a.create_permissions(ctx); err != nil {
+			if err = a.createPermissions(ctx); err != nil {
 				return err
 			}
 		}
 	}
 
-	check, err = a.table_exists(ctx, "otps")
+	check, err = a.tableExists(ctx, "otps")
 	if err != nil {
 		return err
 	} else {
 		if check {
-			if err = a.check_otps(ctx); err != nil {
+			if err = a.checkOTPs(ctx); err != nil {
 				return err
 			}
 		} else {
-			if err = a.create_otps(ctx); err != nil {
+			if err = a.createOTPs(ctx); err != nil {
 				return err
 			}
 		}
@@ -400,7 +400,7 @@ Wrapper function around jackc/pgx/v5 pgx.Conn().
 Returns a *pgx.Conn structure.
 */
 
-func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error) {
+func dbConnect(ctx context.Context, details *dbDetails) (*pgxpool.Pool, error) {
 	/*
 		The password may contain multiple special characters,
 		therefore it is primordial to use, url.URL here.
@@ -409,7 +409,7 @@ func db_Connect(ctx context.Context, details *db_details) (*pgxpool.Pool, error)
 		Scheme: "postgres",
 		User:   url.UserPassword(details.username, details.password),
 		Host:   fmt.Sprintf("%s:%d", details.host, details.port),
-		Path:   details.database_name,
+		Path:   details.databaseName,
 	}
 
 	urlStr := u.String()

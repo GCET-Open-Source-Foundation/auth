@@ -5,15 +5,15 @@ import (
 	"fmt"
 )
 
-func (a *Auth) Create_permissions(username, space_name, role string) error {
+func (a *Auth) CreatePermissions(username, spaceName, role string) error {
 	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
 
 	_, err := a.Conn.Exec(
 		context.Background(),
-		"INSERT INTO permissions(user_id, space_name, role) VALUES ($1, $2, $3)",
-		username, space_name, role,
+		"INSERT INTO permissions(user_id, spaceName, role) VALUES ($1, $2, $3)",
+		username, spaceName, role,
 	)
 
 	if err != nil {
@@ -23,7 +23,7 @@ func (a *Auth) Create_permissions(username, space_name, role string) error {
 	return nil
 }
 
-func (a *Auth) Check_permissions(username, space_name, role string) bool {
+func (a *Auth) CheckPermissions(username, spaceName, role string) bool {
 	if a.Conn == nil {
 		return false
 	}
@@ -34,12 +34,12 @@ func (a *Auth) Check_permissions(username, space_name, role string) bool {
 			SELECT 1
 			FROM permissions 
 			WHERE user_id = $1
-			AND space_name = $2
+			AND spaceName = $2
 			AND role = $3
 		)
 	`
 
-	err := a.Conn.QueryRow(context.Background(), query, username, space_name, role).Scan(&exists)
+	err := a.Conn.QueryRow(context.Background(), query, username, spaceName, role).Scan(&exists)
 	if err != nil {
 		return false
 	}
@@ -47,7 +47,7 @@ func (a *Auth) Check_permissions(username, space_name, role string) bool {
 	return exists
 }
 
-func (a *Auth) Delete_permission(username, space_name, role string) error {
+func (a *Auth) DeletePermission(username, spaceName, role string) error {
 	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
@@ -55,11 +55,11 @@ func (a *Auth) Delete_permission(username, space_name, role string) error {
 	query := `
 		DELETE FROM permissions
 		WHERE user_id = $1
-		AND space_name = $2
+		AND spaceName = $2
 		AND role = $3
 	`
 
-	_, err := a.Conn.Exec(context.Background(), query, username, space_name, role)
+	_, err := a.Conn.Exec(context.Background(), query, username, spaceName, role)
 
 	if err != nil {
 		return err
