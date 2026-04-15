@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (a *Auth) Create_role(name string) error {
+func (a *Auth) CreateRole(name string) error {
 	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}
@@ -22,7 +22,7 @@ func (a *Auth) Create_role(name string) error {
 	return nil
 }
 
-func (a *Auth) Delete_role(name string) error {
+func (a *Auth) DeleteRole(name string) error {
 	if a.Conn == nil {
 		return fmt.Errorf("run auth.Init() first as a function outside API calls")
 	}

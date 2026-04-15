@@ -17,7 +17,7 @@ The functions are these:
 
 ---
 
-2. **auth.Pepper_init(pep string)**
+2. **auth.PepperInit(pep string)**
 
 * Purpose: Sets the global secret pepper used in password hashing.
 * Usage Notes:
@@ -31,7 +31,7 @@ The functions are these:
 
 ---
 
-3. **auth.Default_salt_parameters(time, memory, threads, keyLen)**
+3. **auth.DefaultSaltParameters(time, memory, threads, keyLen)**
 
 * Purpose: Overrides the default Argon2id hashing parameters.
 * Usage Notes:

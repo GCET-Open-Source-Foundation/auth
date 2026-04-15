@@ -9,7 +9,7 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-type argon_parameters struct {
+type argonParameters struct {
 	time    uint32 /* number of iterations */
 	memory  uint32 /* in KB */
 	threads uint8
@@ -19,7 +19,7 @@ type argon_parameters struct {
 /*
 Recommended default values
 */
-var global_default_argon = argon_parameters{
+var globalDefaultArgon = argonParameters{
 	time:    3,
 	memory:  64 * 1024,
 	threads: 4,
@@ -30,7 +30,7 @@ var global_default_argon = argon_parameters{
 A function that is not generally recommended to use unless the user have the technically knowledge.
 But in case you want to use this, please ensure this is used before any API is validated.
 */
-func (a *Auth) Default_salt_parameters(time uint32, memory uint32, threads uint8, keyLen uint32) error {
+func (a *Auth) DefaultSaltParameters(time uint32, memory uint32, threads uint8, keyLen uint32) error {
 	/*
 		Some securtiy measures we ensure, this doesn't allow you to shoot yourself in foot completely
 	*/
@@ -47,10 +47,10 @@ func (a *Auth) Default_salt_parameters(time uint32, memory uint32, threads uint8
 		return fmt.Errorf("key length too small: must be at least 16 bytes")
 	}
 
-	a.argon_params.time = time
-	a.argon_params.memory = memory
-	a.argon_params.threads = threads
-	a.argon_params.keyLen = keyLen
+	a.argonParams.time = time
+	a.argonParams.memory = memory
+	a.argonParams.threads = threads
+	a.argonParams.keyLen = keyLen
 
 	return nil
 }
@@ -62,12 +62,12 @@ random Register API.
 Because we only use is_pepper_present() to check, and once the program ends, we free the memory
 so therefore, we need to always send the pepper first directly after calling auth.Init().
 */
-func (a *Auth) Pepper_init(pep string) error {
+func (a *Auth) PepperInit(pep string) error {
 	if pep == "" {
 		return fmt.Errorf("pepper cannot be empty")
 	}
 
-	a.pepper_once.Do(func() {
+	a.pepperOnce.Do(func() {
 		a.pepper = pep
 	})
 	return nil
@@ -80,10 +80,10 @@ string and returns an argon2 string public. This is a basic functionality any li
 
 This returns the hashes string and the generated salt.
 */
-func (a *Auth) Hash_password(password, salt string) string {
+func (a *Auth) HashPassword(password, salt string) string {
 	/*
 		Screwups are real danger here, imagine some people use
-		Pepper_init() in an API call...
+		PepperInit() in an API call...
 		And not globally...
 
 		That's dangerous
@@ -100,13 +100,13 @@ func (a *Auth) Hash_password(password, salt string) string {
 		log.Printf("Warning: salt length is unusually short (%d bytes). Recommended >= 16 bytes.", len(saltBytes))
 	}
 
-	hash := argon2.IDKey(passwordBytes, saltBytes, a.argon_params.time, a.argon_params.memory, a.argon_params.threads, a.argon_params.keyLen)
+	hash := argon2.IDKey(passwordBytes, saltBytes, a.argonParams.time, a.argonParams.memory, a.argonParams.threads, a.argonParams.keyLen)
 
 	return hex.EncodeToString(hash)
 }
 
-func (a *Auth) compare_passwords(password, salt, storedHash string) bool {
-	newHash := a.Hash_password(password, salt)
+func (a *Auth) comparePasswords(password, salt, storedHash string) bool {
+	newHash := a.HashPassword(password, salt)
 
 	return subtle.ConstantTimeCompare([]byte(newHash), []byte(storedHash)) == 1
 }

@@ -8,7 +8,7 @@ Note here that, the permission numbers are not unique, but the space name is ofc
 
 ```
 CREATE TABLE spaces (
-        space_name TEXT PRIMARY KEY,
+        spaceName TEXT PRIMARY KEY,
         authority INTEGER NOT NULL
 );
 ```
@@ -56,9 +56,9 @@ Only the user which has a role in that space is entered in the permissions table
 ```
 CREATE TABLE permissions (
     user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    space_name TEXT NOT NULL REFERENCES spaces(space_name) ON DELETE CASCADE,
+    spaceName TEXT NOT NULL REFERENCES spaces(spaceName) ON DELETE CASCADE,
     role TEXT NOT NULL REFERENCES roles(role) ON DELETE CASCADE,
-    PRIMARY KEY (user_id, space_name, role)
+    PRIMARY KEY (user_id, spaceName, role)
 );
 ```
 

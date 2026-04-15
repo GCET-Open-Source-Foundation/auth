@@ -10,15 +10,15 @@ import (
 )
 
 /*
-db_details is a type, where any database details
+dbDetails is a type, where any database details
 can be held, and the global var right below this
 is used at Init func to define a main db here.
 */
-type db_details struct {
+type dbDetails struct {
 	port          uint16
 	username      string
 	password      string
-	database_name string
+	databaseName string
 	host          string
 }
 
@@ -29,38 +29,38 @@ this design allows the library to be safely used concurrently.
 */
 type Auth struct {
 	Conn          *pgxpool.Pool
-	argon_params  argon_parameters
+	argonParams  argonParameters
 	pepper        string
-	pepper_once   sync.Once
-	jwt_secret    []byte
-	jwt_expiry    time.Duration 
-	otp_expiry    time.Duration 
-	otp_length    int           
-	jwt_once      sync.Once
-	smtp_email    string
-	smtp_password string
-	smtp_host     string
-	smtp_port     string
+	pepperOnce   sync.Once
+	jwtSecret    []byte
+	jwtExpiry    time.Duration 
+	otpExpiry    time.Duration 
+	otpLength    int           
+	jwtOnce      sync.Once
+	smtpEmail    string
+	smtpPassword string
+	smtpHost     string
+	smtpPort     string
 	smtp_once     sync.Once
 	ctx           context.Context
 	cancel        context.CancelFunc
 }
 
 /*
-Init configures the db_details, Connects to the database,
+Init configures the dbDetails, Connects to the database,
 checks schemas, and returns a fully initialized Auth struct.
 Init takes context info, db username, db password, db name, host url (e.g. localhost)
 */
-func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host string) (*Auth, error) {
-	db_temp := db_details{
+func Init(ctx context.Context, port uint16, dbUser, dbPass, dbName, host string) (*Auth, error) {
+	dbTemp := dbDetails{
 		port:          port,
-		username:      db_user,
-		password:      db_pass,
-		database_name: db_name,
+		username:      dbUser,
+		password:      dbPass,
+		databaseName: dbName,
 		host:          host,
 	}
 
-	pool, err := db_Connect(ctx, &db_temp)
+	pool, err := dbConnect(ctx, &dbTemp)
 	if err != nil {
 		return nil, fmt.Errorf("db Connect failed: %w", err)
 	}
@@ -75,39 +75,39 @@ func Init(ctx context.Context, port uint16, db_user, db_pass, db_name, host stri
 	/* No errors in init */
 	temp := &Auth{
 		Conn:         pool,
-		argon_params: global_default_argon,
-		jwt_expiry:   24 * time.Hour, 
-		otp_expiry:   5 * time.Minute, 
-		otp_length:   6,               
+		argonParams: globalDefaultArgon,
+		jwtExpiry:   24 * time.Hour, 
+		otpExpiry:   5 * time.Minute, 
+		otpLength:   6,               
 		ctx:          libCtx,
 		cancel:       libCancel,
 	}
 
-	if err := temp.check_tables(ctx); err != nil {
+	if err := temp.checkTables(ctx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("database schema check failed: %w", err)
 	}
 	/* start the background OTP cleaner */
-	temp.start_otp_cleanup()
+	temp.startOTPCleanup()
 
 	return temp, nil
 }
 
 /*
-SMTP_init sets the SMTP server details and credentials.
+SMTPInit sets the SMTP server details and credentials.
 This must be called once at startup if you intend to use OTP features.
 It stores the credentials in memory only.
 */
-func (a *Auth) SMTP_init(email, password, host, port string) error {
+func (a *Auth) SMTPInit(email, password, host, port string) error {
 	if email == "" || password == "" || host == "" || port == "" {
 		return fmt.Errorf("all SMTP parameters (email, password, host, port) are required")
 	}
 
 	a.smtp_once.Do(func() {
-		a.smtp_email = email
-		a.smtp_password = password
-		a.smtp_host = host
-		a.smtp_port = port
+		a.smtpEmail = email
+		a.smtpPassword = password
+		a.smtpHost = host
+		a.smtpPort = port
 	})
 	return nil
 }
@@ -130,15 +130,15 @@ func (a *Auth) Close() {
 
 	/* 3. Wipe Sensitive Memory (Security Best Practice) */
 	/* Overwrite JWT secret with zeros */
-	if len(a.jwt_secret) > 0 {
-		for i := range a.jwt_secret {
-			a.jwt_secret[i] = 0
+	if len(a.jwtSecret) > 0 {
+		for i := range a.jwtSecret {
+			a.jwtSecret[i] = 0
 		}
-		a.jwt_secret = nil
+		a.jwtSecret = nil
 	}
 
 	/* Clear string secrets (Go strings are immutable, but we can unassign them) */
-	a.smtp_password = ""
+	a.smtpPassword = ""
 	a.pepper = ""
 
 	fmt.Println("Auth library closed neatly.")

@@ -12,7 +12,7 @@ Constant time comparison is used so that the attackers cannot predict how many c
 
 ```go
 
-type argon_parameters struct {
+type argonParameters struct {
 	time    uint32 /* number of iterations */
 	memory  uint32 /* in KB */
 	threads uint8
@@ -31,7 +31,7 @@ time': defines the amount of computation realized and, therefore, the execution 
 'keyLen': longer hashes give attackers no shortcut like “small output space” to brute‑force; they must attack the password itself.
 
 ```go
-var global_default_argon = argon_parameters{
+var globalDefaultArgon = argonParameters{
 	time:    3,
 	memory:  64 * 1024,
 	threads: 4,
@@ -41,7 +41,7 @@ var global_default_argon = argon_parameters{
 These are the default parameters that have been set.
 
 ```go
-func (a *Auth) Default_salt_parameters(time uint32, memory uint32, threads uint8, keyLen uint32) error {
+func (a *Auth) DefaultSaltParameters(time uint32, memory uint32, threads uint8, keyLen uint32) error {
 	
 	if time == 0 {
 		return fmt.Errorf("time (iterations) cannot be zero")
@@ -56,10 +56,10 @@ func (a *Auth) Default_salt_parameters(time uint32, memory uint32, threads uint8
 		return fmt.Errorf("key length too small: must be at least 16 bytes")
 	}
 
-	a.argon_params.time = time
-	a.argon_params.memory = memory
-	a.argon_params.threads = threads
-	a.argon_params.keyLen = keyLen
+	a.argonParams.time = time
+	a.argonParams.memory = memory
+	a.argonParams.threads = threads
+	a.argonParams.keyLen = keyLen
 
 	return nil
 }
@@ -76,15 +76,15 @@ For safety, it checks all inputs and rejects unsafe values:
 
 'keyLen': must be at least 16 bytes so the hash isn’t trivially short.
 
-If it passes all the checks, it saves values into **a.argon_params** and returns nil; otherwise, it returns an error explaining what was wrong.
+If it passes all the checks, it saves values into **a.argonParams** and returns nil; otherwise, it returns an error explaining what was wrong.
 
 ```go
-func (a *Auth) Pepper_init(pep string) error {
+func (a *Auth) PepperInit(pep string) error {
 	if pep == "" {
 		return fmt.Errorf("pepper cannot be empty")
 	}
 
-	a.pepper_once.Do(func() {
+	a.pepperOnce.Do(func() {
 		a.pepper = pep
 	})
 	return nil
@@ -95,7 +95,7 @@ This method sets a global pepper value. It is basically a secret string that wil
 If the provided string is empty it returns an error.
 
 ```go
-func (a *Auth) Hash_password(password, salt string) string {
+func (a *Auth) HashPassword(password, salt string) string {
 
 	if a.pepper != "" {
 		password += a.pepper
@@ -106,7 +106,7 @@ func (a *Auth) Hash_password(password, salt string) string {
 		log.Printf("Warning: salt length is unusually short (%d bytes). Recommended >= 16 bytes.", len(saltBytes))
 	}
 
-	hash := argon2.IDKey(passwordBytes, saltBytes, a.argon_params.time, a.argon_params.memory, a.argon_params.threads, a.argon_params.keyLen)
+	hash := argon2.IDKey(passwordBytes, saltBytes, a.argonParams.time, a.argonParams.memory, a.argonParams.threads, a.argonParams.keyLen)
 
 	return hex.EncodeToString(hash)
 }
@@ -114,12 +114,12 @@ func (a *Auth) Hash_password(password, salt string) string {
 This method takes a plain‑text password + salt and returns encoded Argon hashed string suitable for storing in the db.It does not generate the salt itself.Salts are created elsewhere (for example in users.go) and passed inside.
 
 ```go
-func (a *Auth) compare_passwords(password, salt, storedHash string) bool {
-	newHash := a.Hash_password(password, salt)
+func (a *Auth) comparePasswords(password, salt, storedHash string) bool {
+	newHash := a.HashPassword(password, salt)
 
 	return subtle.ConstantTimeCompare([]byte(newHash), []byte(storedHash)) == 1
 }
 ```
-This checks whether a password attempt matches an existing hash. It first  rehashes input password and salt by calling Hash_password, using the same parameters (and pepper, if configured) that were used when the password was originally stored.​
+This checks whether a password attempt matches an existing hash. It first  rehashes input password and salt by calling HashPassword, using the same parameters (and pepper, if configured) that were used when the password was originally stored.​
 
 It then compares the newHash with the **storedHash** using **subtle.ConstantTimeCompare** protecting against timing attacks. The function returns true only if the two hashes are equal, and false otherwise.
