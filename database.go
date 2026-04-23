@@ -86,6 +86,23 @@ func (a *Auth) createOTPs(ctx context.Context) error {
 	return nil
 }
 
+func (a *Auth) createRefreshTokens(ctx context.Context) error {
+	query := `
+	CREATE TABLE IF NOT EXISTS refresh_tokens (
+		token TEXT PRIMARY KEY,
+		user_id TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+		expires_at TIMESTAMP NOT NULL,
+		revoked BOOLEAN NOT NULL DEFAULT false,
+		created_at TIMESTAMP NOT NULL DEFAULT NOW()
+	)`
+	_, err := a.Conn.Exec(ctx, query)
+	if err != nil {
+		return fmt.Errorf("error creating refresh_tokens table: %w", err)
+	}
+	log.Println("Refresh tokens table created successfully (or already exists).")
+	return nil
+}
+
 /*
 These functions now return 'error' instead of calling log.Fatal()
 */
@@ -294,6 +311,46 @@ func (a *Auth) checkOTPs(ctx context.Context) error {
 	return nil
 }
 
+func (a *Auth) checkRefreshTokens(ctx context.Context) error {
+	query := `
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = 'refresh_tokens'
+            ORDER BY ordinal_position;
+      `
+	rows, err := a.Conn.Query(ctx, query)
+	if err != nil {
+		return fmt.Errorf("failed to query refresh_tokens schema: %w", err)
+	}
+	defer rows.Close()
+
+	columns := map[string]string{}
+	for rows.Next() {
+		var name, dataType string
+		if err := rows.Scan(&name, &dataType); err != nil {
+			return fmt.Errorf("failed to scan refresh_tokens schema: %w", err)
+		}
+		columns[name] = dataType
+	}
+
+	expected := map[string]string{
+		"token":      "text",
+		"user_id":    "text",
+		"expires_at": "timestamp without time zone",
+		"revoked":    "boolean",
+		"created_at": "timestamp without time zone",
+	}
+
+	for col, typ := range expected {
+		if t, ok := columns[col]; !ok || t != typ {
+			return fmt.Errorf("refresh_tokens table schema mismatch for column '%s': expected %s, got %s", col, typ, t)
+		}
+	}
+
+	log.Println("Refresh tokens table schema is correct.")
+	return nil
+}
+
 /*
 Checks if the table exists or not and returns the output in boolean
 */
@@ -387,6 +444,21 @@ func (a *Auth) checkTables(ctx context.Context) error {
 			}
 		} else {
 			if err = a.createOTPs(ctx); err != nil {
+				return err
+			}
+		}
+	}
+
+	check, err = a.tableExists(ctx, "refresh_tokens")
+	if err != nil {
+		return err
+	} else {
+		if check {
+			if err = a.checkRefreshTokens(ctx); err != nil {
+				return err
+			}
+		} else {
+			if err = a.createRefreshTokens(ctx); err != nil {
 				return err
 			}
 		}

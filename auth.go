@@ -29,22 +29,24 @@ Unlike the previous global-variable approach,
 this design allows the library to be safely used concurrently.
 */
 type Auth struct {
-	Conn         *pgxpool.Pool
-	argonParams  argonParameters
-	pepper       string
-	pepperOnce   sync.Once
-	jwtSecret    []byte
-	jwtExpiry    time.Duration
-	otpExpiry    time.Duration
-	otpLength    int
-	jwtOnce      sync.Once
-	smtpEmail    string
-	smtpPassword string
-	smtpHost     string
-	smtpPort     string
-	smtp_once    sync.Once
-	ctx          context.Context
-	cancel       context.CancelFunc
+	Conn               *pgxpool.Pool
+	argonParams        argonParameters
+	pepper             string
+	pepperOnce         sync.Once
+	jwtSecret          []byte
+	jwtExpiry          time.Duration
+	otpExpiry          time.Duration
+	otpLength          int
+	jwtOnce            sync.Once
+	smtpEmail          string
+	smtpPassword       string
+	smtpHost           string
+	smtpPort           string
+	smtp_once          sync.Once
+	refreshTokenExpiry time.Duration
+	refreshTokenLength int
+	ctx                context.Context
+	cancel             context.CancelFunc
 }
 
 /*
