@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/oauth2"
 )
 
 /*
@@ -47,6 +48,8 @@ type Auth struct {
 	refreshTokenLength int
 	ctx                context.Context
 	cancel             context.CancelFunc
+	oauthConfig        *oauth2.Config
+	oauthOnce          sync.Once
 }
 
 /*
@@ -149,6 +152,7 @@ func (a *Auth) Close() {
 	/* Clear string secrets (Go strings are immutable, but we can unassign them) */
 	a.smtpPassword = ""
 	a.pepper = ""
+	a.oauthConfig = nil
 
 	fmt.Println("Auth library closed neatly.")
 }

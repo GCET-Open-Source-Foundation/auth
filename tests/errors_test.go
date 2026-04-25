@@ -30,6 +30,9 @@ func TestErrorsAreSentinels(t *testing.T) {
 		auth.ErrRefreshTokenInvalid,
 		auth.ErrRefreshTokenRevoked,
 		auth.ErrRefreshTokenExpired,
+		auth.ErrOAuthNotInitialized,
+		auth.ErrOAuthExchangeFailed,
+		auth.ErrOAuthProfileFetchFailed,
 	}
 
 	for i, err := range sentinels {
