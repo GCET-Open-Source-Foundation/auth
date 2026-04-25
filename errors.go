@@ -16,4 +16,7 @@ var (
 	ErrInvalidInput        = errors.New("invalid input provided")
 	ErrInvalidEmail        = errors.New("invalid email format")
 	ErrEmptyInput          = errors.New("required field cannot be empty")
+	ErrOAuthNotInit        = errors.New("oauth not initialized")
+	ErrOAuthExchangeFailed = errors.New("oauth code exchange failed")
+	ErrOAuthProfileFailed  = errors.New("oauth profile fetch failed")
 )

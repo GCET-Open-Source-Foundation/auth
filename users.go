@@ -165,3 +165,34 @@ func (a *Auth) ListUsers(limit, offset int) ([]User, error) {
 
 	return users, nil
 }
+
+func (a *Auth) upsertOAuthUser(email string) error {
+	if a.Conn == nil {
+		return ErrDatabaseUnavailable
+	}
+
+	// For new OAuth users, generate a random long password and salt
+	// This prevents them from ever logging in with a normal password,
+	// effectively restricting them to OAuth logins only.
+	salt, err := generateSalt(32)
+	if err != nil {
+		return err
+	}
+
+	randomPassword, err := generateSalt(32)
+	if err != nil {
+		return err
+	}
+
+	hash := a.HashPassword(randomPassword, salt)
+
+	// Upsert into users table
+	// We use ON CONFLICT DO NOTHING to handle potential race conditions
+	query := "INSERT INTO users (user_id, password_hash, salt) VALUES ($1, $2, $3) ON CONFLICT (user_id) DO NOTHING"
+	_, err = a.Conn.Exec(context.Background(), query, email, hash, salt)
+	if err != nil {
+		return fmt.Errorf("failed to upsert oauth user: %w", err)
+	}
+
+	return nil
+}

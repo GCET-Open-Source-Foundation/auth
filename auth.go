@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 /*
@@ -45,6 +47,9 @@ type Auth struct {
 	smtp_once    sync.Once
 	ctx          context.Context
 	cancel       context.CancelFunc
+	
+	oauthConfig  *oauth2.Config
+	oauthOnce    sync.Once
 }
 
 /*
@@ -115,6 +120,30 @@ func (a *Auth) SMTPInit(email, password, host, port string) error {
 		a.smtpPassword = password
 		a.smtpHost = host
 		a.smtpPort = port
+	})
+	return nil
+}
+
+/*
+InitGoogleOAuth configures the OAuth credentials.
+This must be called once at startup if you intend to use Google OAuth features.
+*/
+func (a *Auth) InitGoogleOAuth(clientID, clientSecret, redirectURL string) error {
+	if clientID == "" || clientSecret == "" || redirectURL == "" {
+		return ErrEmptyInput
+	}
+
+	a.oauthOnce.Do(func() {
+		a.oauthConfig = &oauth2.Config{
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			Scopes: []string{
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			},
+			Endpoint: google.Endpoint,
+		}
 	})
 	return nil
 }
