@@ -29,6 +29,10 @@ func (a *Auth) LoginUser(username, password string) error {
 		return ErrUserNotFound
 	}
 
+	if storedHash == "OAUTH_MANAGED" {
+		return ErrInvalidCredentials
+	}
+
 	if !a.comparePasswords(password, storedSalt, storedHash) {
 		return ErrInvalidCredentials
 	}
@@ -165,3 +169,32 @@ func (a *Auth) ListUsers(limit, offset int) ([]User, error) {
 
 	return users, nil
 }
+
+/*
+upsertOAuthUser safely inserts an OAuth user into the database without a real password.
+Uses placeholder values for password_hash and salt to maintain NOT NULL constraints.
+*/
+func (a *Auth) upsertOAuthUser(ctx context.Context, email string) error {
+	if a.Conn == nil {
+		return ErrDatabaseUnavailable
+	}
+
+	if _, err := mail.ParseAddress(email); err != nil {
+		return ErrInvalidEmail
+	}
+
+	const placeholderHash = "OAUTH_MANAGED"
+	const placeholderSalt = "OAUTH_MANAGED_SALT_16B"
+	query := `
+		INSERT INTO users (user_id, password_hash, salt) 
+		VALUES ($1, $2, $3) 
+		ON CONFLICT (user_id) DO NOTHING
+	`
+	_, err := a.Conn.Exec(ctx, query, email, placeholderHash, placeholderSalt)
+	if err != nil {
+		return fmt.Errorf("failed to upsert oauth user: %w", err)
+	}
+
+	return nil
+}
+
