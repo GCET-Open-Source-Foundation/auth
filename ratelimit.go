@@ -141,26 +141,37 @@ func (rl *RateLimiter) cleanup() {
 	for {
 		select {
 		case <-ticker.C:
-			rl.mu.Lock()
-			now := time.Now()
-			cutoff := now.Add(-rl.config.Window)
-			for key, timestamps := range rl.buckets {
-				valid := timestamps[:0]
-				for _, ts := range timestamps {
-					if ts.After(cutoff) {
-						valid = append(valid, ts)
-					}
-				}
-				if len(valid) == 0 {
-					delete(rl.buckets, key)
-				} else {
-					rl.buckets[key] = valid
-				}
-			}
-			rl.mu.Unlock()
-
+			rl.cleanPass()
 		case <-rl.done:
 			return
 		}
+	}
+}
+
+func (rl *RateLimiter) cleanPass() {
+	rl.mu.Lock()
+	keys := make([]string, 0, len(rl.buckets))
+	for k := range rl.buckets {
+		keys = append(keys, k)
+	}
+	rl.mu.Unlock()
+
+	cutoff := time.Now().Add(-rl.config.Window)
+	for _, key := range keys {
+		rl.mu.Lock()
+		if timestamps, ok := rl.buckets[key]; ok {
+			valid := timestamps[:0]
+			for _, ts := range timestamps {
+				if ts.After(cutoff) {
+					valid = append(valid, ts)
+				}
+			}
+			if len(valid) == 0 {
+				delete(rl.buckets, key)
+			} else {
+				rl.buckets[key] = valid
+			}
+		}
+		rl.mu.Unlock()
 	}
 }

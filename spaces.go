@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 )
 
 func (a *Auth) CreateSpace(name string, authority int) error {
@@ -9,7 +8,7 @@ func (a *Auth) CreateSpace(name string, authority int) error {
 		return ErrNotInitialized
 	}
 
-	_, err := a.Conn.Exec(context.Background(),
+	_, err := a.Conn.Exec(a.ctx,
 		"INSERT INTO spaces(spaceName, authority) VALUES ($1, $2)",
 		name, authority,
 	)
@@ -27,7 +26,7 @@ func (a *Auth) DeleteSpace(name string) error {
 	}
 
 	_, err := a.Conn.Exec(
-		context.Background(),
+		a.ctx,
 		"DELETE FROM spaces WHERE spaceName = $1",
 		name,
 	)
