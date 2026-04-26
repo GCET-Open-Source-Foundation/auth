@@ -79,7 +79,7 @@ func Init(ctx context.Context, port uint16, dbUser, dbPass, dbName, host string)
 
 	/* Create a context for the Auth library's lifecycle */
 	/* context.WithCancel returns a context and a function to cancel it */
-	libCtx, libCancel := context.WithCancel(context.Background())
+	libCtx, libCancel := context.WithCancel(ctx)
 
 	/* No errors in init */
 	temp := &Auth{
@@ -150,9 +150,8 @@ func (a *Auth) Close() {
 	}
 
 	/* Clear string secrets (Go strings are immutable, but we can unassign them) */
+	/* Note: This is best-effort since GC handles actual string memory */
 	a.smtpPassword = ""
 	a.pepper = ""
 	a.oauthConfig = nil
-
-	fmt.Println("Auth library closed neatly.")
 }

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"math/big"
@@ -78,7 +77,7 @@ func (a *Auth) SendOTP(userEmail string) error {
 		ON CONFLICT (email) 
 		DO UPDATE SET code = $2, expires_at = $3
 	`
-	_, err = a.Conn.Exec(context.Background(), query, userEmail, code, expiry)
+	_, err = a.Conn.Exec(a.ctx, query, userEmail, code, expiry)
 	if err != nil {
 		return fmt.Errorf("db error saving OTP: %w", err)
 	}
@@ -117,7 +116,7 @@ func (a *Auth) VerifyOTP(userEmail, inputCode string) error {
 
 	/* Get the OTP */
 	query := "SELECT code, expires_at FROM otps WHERE email = $1"
-	err := a.Conn.QueryRow(context.Background(), query, userEmail).Scan(&storedCode, &expiry)
+	err := a.Conn.QueryRow(a.ctx, query, userEmail).Scan(&storedCode, &expiry)
 	if err != nil {
 		return ErrInvalidOTP /* OTP not found */
 	}
@@ -131,7 +130,7 @@ func (a *Auth) VerifyOTP(userEmail, inputCode string) error {
 	}
 
 	/* Valid! Delete it. */
-	_, _ = a.Conn.Exec(context.Background(), "DELETE FROM otps WHERE email = $1", userEmail)
+	_, _ = a.Conn.Exec(a.ctx, "DELETE FROM otps WHERE email = $1", userEmail)
 	return nil
 }
 
@@ -154,7 +153,7 @@ func (a *Auth) startOTPCleanup() {
 			case <-ticker.C:
 				/* The Timer ticked: Do the work */
 				if a.Conn != nil {
-					_, _ = a.Conn.Exec(context.Background(), "DELETE FROM otps WHERE expires_at < NOW()")
+					_, _ = a.Conn.Exec(a.ctx, "DELETE FROM otps WHERE expires_at < NOW()")
 				}
 
 			case <-a.ctx.Done():
@@ -176,7 +175,7 @@ func (a *Auth) OTPExists(userEmail string) (bool, error) {
 
 	var exists bool
 	query := "SELECT EXISTS(SELECT 1 FROM otps WHERE email = $1 AND expires_at > NOW())"
-	err := a.Conn.QueryRow(context.Background(), query, userEmail).Scan(&exists)
+	err := a.Conn.QueryRow(a.ctx, query, userEmail).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
 	}
@@ -190,7 +189,7 @@ func (a *Auth) ListActiveOTPs(limit, offset int) ([]string, error) {
 	}
 
 	query := "SELECT email FROM otps WHERE expires_at > NOW() LIMIT $1 OFFSET $2"
-	rows, err := a.Conn.Query(context.Background(), query, limit, offset)
+	rows, err := a.Conn.Query(a.ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
 	}

@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -24,7 +23,7 @@ func (a *Auth) LoginUser(username, password string) error {
 
 	var storedHash, storedSalt string
 	query := "SELECT password_hash, salt FROM users WHERE user_id = $1"
-	err := a.Conn.QueryRow(context.Background(), query, username).Scan(&storedHash, &storedSalt)
+	err := a.Conn.QueryRow(a.ctx, query, username).Scan(&storedHash, &storedSalt)
 	if err != nil {
 		return ErrUserNotFound
 	}
@@ -66,7 +65,7 @@ func (a *Auth) RegisterUser(username, password string) error {
 
 	hash := a.HashPassword(password, salt)
 
-	_, err = a.Conn.Exec(context.Background(),
+	_, err = a.Conn.Exec(a.ctx,
 		"INSERT INTO users (user_id, password_hash, salt) VALUES ($1, $2, $3)",
 		username, hash, salt,
 	)
@@ -89,7 +88,7 @@ func (a *Auth) ChangePass(username, newPassword string) error {
 
 	newHash := a.HashPassword(newPassword, newSalt)
 
-	cmdTag, err := a.Conn.Exec(context.Background(),
+	cmdTag, err := a.Conn.Exec(a.ctx,
 		"UPDATE users SET password_hash = $1, salt = $2 WHERE user_id = $3",
 		newHash, newSalt, username,
 	)
@@ -110,7 +109,7 @@ func (a *Auth) DeleteUser(username string) error {
 	}
 
 	_, err := a.Conn.Exec(
-		context.Background(),
+		a.ctx,
 		"DELETE FROM users WHERE user_id = $1",
 		username,
 	)
@@ -135,7 +134,7 @@ func (a *Auth) UserExists(userEmail string) (bool, error) {
 
 	var exists bool
 	query := "SELECT EXISTS(SELECT 1 FROM users WHERE user_id = $1)"
-	err := a.Conn.QueryRow(context.Background(), query, userEmail).Scan(&exists)
+	err := a.Conn.QueryRow(a.ctx, query, userEmail).Scan(&exists)
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
 	}
@@ -148,7 +147,7 @@ func (a *Auth) ListUsers(limit, offset int) ([]User, error) {
 	}
 
 	query := "SELECT user_id FROM users LIMIT $1 OFFSET $2"
-	rows, err := a.Conn.Query(context.Background(), query, limit, offset)
+	rows, err := a.Conn.Query(a.ctx, query, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrDatabaseUnavailable, err)
 	}
