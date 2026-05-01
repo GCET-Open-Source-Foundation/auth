@@ -1,8 +1,6 @@
 package auth
 
-import (
-)
-
+// CreatePermissions assigns a role to a user within a specific space.
 func (a *Auth) CreatePermissions(username, spaceName, role string) error {
 	if a.Conn == nil {
 		return ErrNotInitialized

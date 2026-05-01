@@ -84,6 +84,14 @@ func (a *Auth) GenerateRefreshToken(userID string) (string, error) {
 		return "", fmt.Errorf("%w: failed to store refresh token: %v", ErrDatabaseUnavailable, err)
 	}
 
+	if a.redisClient != nil {
+		pipe := a.redisClient.Pipeline()
+		pipe.Set(a.ctx, "refresh:"+token, userID, a.refreshTokenExpiry)
+		pipe.SAdd(a.ctx, "user_tokens:"+userID, token)
+		pipe.Expire(a.ctx, "user_tokens:"+userID, a.refreshTokenExpiry)
+		_, _ = pipe.Exec(a.ctx)
+	}
+
 	return token, nil
 }
 
@@ -99,25 +107,51 @@ func (a *Auth) ValidateRefreshToken(token string) (string, error) {
 		return "", ErrDatabaseUnavailable
 	}
 
-	var userID string
-	var expiresAt time.Time
-	var revoked bool
+	if a.redisClient != nil {
+		cachedUser, err := a.redisClient.Get(a.ctx, "refresh:"+token).Result()
+		if err == nil {
+			return cachedUser, nil
+		}
+	}
 
-	query := "SELECT user_id, expires_at, revoked FROM refresh_tokens WHERE token = $1"
-	err := a.Conn.QueryRow(a.ctx, query, token).Scan(&userID, &expiresAt, &revoked)
+	val, err, _ := a.requestGroup.Do("validate_refresh:"+token, func() (interface{}, error) {
+		var userID string
+		var expiresAt time.Time
+		var revoked bool
+
+		query := "SELECT user_id, expires_at, revoked FROM refresh_tokens WHERE token = $1"
+		err := a.Conn.QueryRow(a.ctx, query, token).Scan(&userID, &expiresAt, &revoked)
+		if err != nil {
+			return "", ErrRefreshTokenInvalid
+		}
+
+		if revoked {
+			return "", ErrRefreshTokenRevoked
+		}
+
+		if time.Now().After(expiresAt) {
+			return "", ErrRefreshTokenExpired
+		}
+
+		if a.redisClient != nil {
+			ttl := time.Until(expiresAt)
+			if ttl > 0 {
+				pipe := a.redisClient.Pipeline()
+				pipe.Set(a.ctx, "refresh:"+token, userID, ttl)
+				pipe.SAdd(a.ctx, "user_tokens:"+userID, token)
+				pipe.Expire(a.ctx, "user_tokens:"+userID, a.refreshTokenExpiry)
+				_, _ = pipe.Exec(a.ctx)
+			}
+		}
+
+		return userID, nil
+	})
+
 	if err != nil {
-		return "", ErrRefreshTokenInvalid
+		return "", err
 	}
 
-	if revoked {
-		return "", ErrRefreshTokenRevoked
-	}
-
-	if time.Now().After(expiresAt) {
-		return "", ErrRefreshTokenExpired
-	}
-
-	return userID, nil
+	return val.(string), nil
 }
 
 /*
@@ -171,6 +205,10 @@ func (a *Auth) RevokeRefreshToken(token string) error {
 		return ErrRefreshTokenInvalid
 	}
 
+	if a.redisClient != nil {
+		a.redisClient.Del(a.ctx, "refresh:"+token)
+	}
+
 	return nil
 }
 
@@ -184,6 +222,20 @@ func (a *Auth) RevokeAllUserRefreshTokens(userID string) error {
 	}
 	if a.Conn == nil {
 		return ErrDatabaseUnavailable
+	}
+
+	if a.redisClient != nil {
+		tokens, err := a.redisClient.SMembers(a.ctx, "user_tokens:"+userID).Result()
+		if err == nil && len(tokens) > 0 {
+			keys := make([]string, len(tokens))
+			for i, t := range tokens {
+				keys[i] = "refresh:" + t
+			}
+			pipe := a.redisClient.Pipeline()
+			pipe.Del(a.ctx, keys...)
+			pipe.Del(a.ctx, "user_tokens:"+userID)
+			_, _ = pipe.Exec(a.ctx)
+		}
 	}
 
 	_, err := a.Conn.Exec(a.ctx,

@@ -1,8 +1,6 @@
 package auth
 
-import (
-)
-
+// CreateSpace initializes a new organizational space with a specific authority level.
 func (a *Auth) CreateSpace(name string, authority int) error {
 	if a.Conn == nil {
 		return ErrNotInitialized

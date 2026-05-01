@@ -19,6 +19,8 @@ const (
 	testDBPass = "testpass"
 	testDBName = "testauth"
 	testDBHost = "127.0.0.1"
+	testRedisHost = "127.0.0.1:6379"
+	testRedisPass = ""
 )
 
 /*
@@ -75,4 +77,17 @@ func preCleanDB(t *testing.T, ctx context.Context) {
 	pool.Exec(ctx, "DROP TABLE IF EXISTS users CASCADE")
 	pool.Exec(ctx, "DROP TABLE IF EXISTS roles CASCADE")
 	pool.Exec(ctx, "DROP TABLE IF EXISTS spaces CASCADE")
+}
+
+/*
+setupRedis connects the given Auth instance to a test Redis server.
+If Redis is not reachable, it returns false, allowing the caller to t.Skip().
+*/
+func setupRedis(t *testing.T, a *auth.Auth) bool {
+	t.Helper()
+	err := a.RedisInit(testRedisHost, testRedisPass, 0)
+	if err != nil {
+		return false
+	}
+	return true
 }

@@ -8,14 +8,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
+	"golang.org/x/sync/singleflight"
 )
 
-/*
-dbDetails is a type, where any database details
-can be held, and the global var right below this
-is used at Init func to define a main db here.
-*/
+// dbDetails holds the configuration required to connect to the PostgreSQL database.
 type dbDetails struct {
 	port         uint16
 	username     string
@@ -24,11 +22,26 @@ type dbDetails struct {
 	host         string
 }
 
-/*
-Auth is a struct that holds the internal state of the library.
-Unlike the previous global-variable approach,
-this design allows the library to be safely used concurrently.
-*/
+const rateLimitScript = `
+local window = tonumber(ARGV[1])
+local limit = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local clearBefore = now - window
+
+redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, clearBefore)
+local count = redis.call('ZCARD', KEYS[1])
+
+if count >= limit then
+    return 0
+end
+
+redis.call('ZADD', KEYS[1], now, now)
+redis.call('PEXPIRE', KEYS[1], window)
+return 1
+`
+
+// Auth manages the internal state of the library, including database connections,
+// cryptographic parameters, and caching clients. It is safe for concurrent use.
 type Auth struct {
 	Conn               *pgxpool.Pool
 	argonParams        argonParameters
@@ -50,6 +63,9 @@ type Auth struct {
 	cancel             context.CancelFunc
 	oauthConfig        *oauth2.Config
 	oauthOnce          sync.Once
+	redisClient        *redis.Client
+	requestGroup       singleflight.Group
+	rateLimitSHA       string
 }
 
 /*
@@ -125,6 +141,37 @@ func (a *Auth) SMTPInit(email, password, host, port string) error {
 }
 
 /*
+RedisInit initializes the Redis client for caching and rate limiting.
+It verifies the connection by sending a Ping.
+*/
+func (a *Auth) RedisInit(addr, password string, db int) error {
+	if addr == "" {
+		return ErrEmptyInput
+	}
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
+
+	if err := client.Ping(a.ctx).Err(); err != nil {
+		client.Close()
+		return fmt.Errorf("%w: failed to connect to redis: %v", ErrRedisUnavailable, err)
+	}
+
+	sha, err := client.ScriptLoad(a.ctx, rateLimitScript).Result()
+	if err != nil {
+		client.Close()
+		return fmt.Errorf("failed to load rate limit lua script: %w", err)
+	}
+
+	a.redisClient = client
+	a.rateLimitSHA = sha
+	return nil
+}
+
+/*
 Close performs a graceful shutdown of the Auth library.
 It stops background tasks, closes database Connections, and wipes sensitive data from memory.
 */
@@ -154,4 +201,10 @@ func (a *Auth) Close() {
 	a.smtpPassword = ""
 	a.pepper = ""
 	a.oauthConfig = nil
+
+	/* 4. Close Redis Connection */
+	if a.redisClient != nil {
+		a.redisClient.Close()
+		a.redisClient = nil
+	}
 }

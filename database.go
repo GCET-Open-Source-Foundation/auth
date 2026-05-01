@@ -9,9 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-/*
-Systematically creates all tables if they don't exist.
-*/
+// checkTables systematically creates all required tables if they do not exist.
 func (a *Auth) checkTables(ctx context.Context) error {
 	query := `
 		CREATE TABLE IF NOT EXISTS spaces (
@@ -52,11 +50,7 @@ func (a *Auth) checkTables(ctx context.Context) error {
 	return nil
 }
 
-/*
-Wrapper function around jackc/pgx/v5 pgx.Conn().
-Returns a *pgx.Conn structure.
-*/
-
+// dbConnect establishes a connection pool to the PostgreSQL database.
 func dbConnect(ctx context.Context, details *dbDetails) (*pgxpool.Pool, error) {
 	/*
 		The password may contain multiple special characters,

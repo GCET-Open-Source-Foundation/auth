@@ -1,8 +1,12 @@
 package auth
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 /*
@@ -55,7 +59,7 @@ Allow checks whether a request identified by key should be allowed.
 It records the current timestamp and returns nil if the request is within
 the configured limit, or ErrRateLimitExceeded otherwise.
 */
-func (rl *RateLimiter) Allow(key string) error {
+func (rl *RateLimiter) Allow(ctx context.Context, key string) error {
 	if key == "" {
 		return ErrEmptyInput
 	}
@@ -87,7 +91,7 @@ func (rl *RateLimiter) Allow(key string) error {
 /*
 Remaining returns how many requests the key has left in the current window.
 */
-func (rl *RateLimiter) Remaining(key string) int {
+func (rl *RateLimiter) Remaining(ctx context.Context, key string) (int, error) {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
@@ -104,19 +108,20 @@ func (rl *RateLimiter) Remaining(key string) int {
 
 	remaining := rl.config.MaxRequests - count
 	if remaining < 0 {
-		return 0
+		return 0, nil
 	}
-	return remaining
+	return remaining, nil
 }
 
 /*
 Reset clears the rate limit state for a specific key.
 Useful when a user successfully authenticates and you want to clear failed-attempt counters.
 */
-func (rl *RateLimiter) Reset(key string) {
+func (rl *RateLimiter) Reset(ctx context.Context, key string) error {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 	delete(rl.buckets, key)
+	return nil
 }
 
 /*
@@ -129,11 +134,7 @@ func (rl *RateLimiter) Stop() {
 	})
 }
 
-/*
-cleanup runs in the background and periodically removes keys whose
-timestamps have all expired. This prevents memory leaks from keys
-that made requests long ago but never returned.
-*/
+// cleanup periodically evicts expired timestamps to prevent memory leaks.
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -174,4 +175,88 @@ func (rl *RateLimiter) cleanPass() {
 		}
 		rl.mu.Unlock()
 	}
+}
+
+/*
+RedisRateLimiter implements a Redis-backed sliding-window rate limiter.
+It relies on a pre-loaded Lua script managed by the Auth instance.
+*/
+type RedisRateLimiter struct {
+	client    *redis.Client
+	config    RateLimiterConfig
+	scriptSHA string
+}
+
+/*
+NewRedisRateLimiter creates and returns a new RedisRateLimiter.
+It requires an initialized Auth instance to use its Redis client and script SHA.
+*/
+func (a *Auth) NewRedisRateLimiter(cfg RateLimiterConfig) (*RedisRateLimiter, error) {
+	if cfg.MaxRequests <= 0 || cfg.Window <= 0 {
+		return nil, ErrInvalidInput
+	}
+	if a.redisClient == nil || a.rateLimitSHA == "" {
+		return nil, ErrRedisUnavailable
+	}
+
+	return &RedisRateLimiter{
+		client:    a.redisClient,
+		config:    cfg,
+		scriptSHA: a.rateLimitSHA,
+	}, nil
+}
+
+func (rl *RedisRateLimiter) Allow(ctx context.Context, key string) error {
+	if key == "" {
+		return ErrEmptyInput
+	}
+
+	now := time.Now()
+	windowMs := rl.config.Window.Milliseconds()
+	nowMs := now.UnixMilli()
+
+	res, err := rl.client.EvalSha(ctx, rl.scriptSHA, []string{"ratelimit:" + key}, windowMs, rl.config.MaxRequests, nowMs).Result()
+	if err != nil {
+		return ErrRateLimitBackendDown
+	}
+
+	if allowed, ok := res.(int64); ok && allowed == 1 {
+		return nil
+	}
+	return ErrRateLimitExceeded
+}
+
+func (rl *RedisRateLimiter) Remaining(ctx context.Context, key string) (int, error) {
+	if key == "" {
+		return 0, ErrEmptyInput
+	}
+
+	now := time.Now()
+	cutoffMs := now.UnixMilli() - rl.config.Window.Milliseconds()
+
+	pipe := rl.client.Pipeline()
+	pipe.ZRemRangeByScore(ctx, "ratelimit:"+key, "0", fmt.Sprintf("%d", cutoffMs))
+	countCmd := pipe.ZCard(ctx, "ratelimit:"+key)
+	_, err := pipe.Exec(ctx)
+	if err != nil {
+		return 0, ErrRateLimitBackendDown
+	}
+
+	count := countCmd.Val()
+	remaining := rl.config.MaxRequests - int(count)
+	if remaining < 0 {
+		return 0, nil
+	}
+	return remaining, nil
+}
+
+func (rl *RedisRateLimiter) Reset(ctx context.Context, key string) error {
+	if key == "" {
+		return ErrEmptyInput
+	}
+	err := rl.client.Del(ctx, "ratelimit:"+key).Err()
+	if err != nil {
+		return ErrRateLimitBackendDown
+	}
+	return nil
 }

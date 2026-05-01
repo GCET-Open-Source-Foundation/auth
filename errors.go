@@ -23,4 +23,6 @@ var (
 	ErrOAuthNotInitialized     = errors.New("oauth not initialized")
 	ErrOAuthExchangeFailed     = errors.New("failed to exchange oauth code")
 	ErrOAuthProfileFetchFailed = errors.New("failed to fetch user profile from provider")
+	ErrRedisUnavailable        = errors.New("redis connection unavailable")
+	ErrRateLimitBackendDown    = errors.New("rate limit backend is down")
 )
