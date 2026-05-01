@@ -646,18 +646,18 @@ func TestIntegrationRateLimitedLogin(t *testing.T) {
 	userKey := "limited@example.com"
 
 	for i := 0; i < 3; i++ {
-		_ = rl.Allow(userKey)
+		_ = rl.Allow(context.Background(), userKey)
 		_ = a.LoginUser("limited@example.com", "wrongpass")
 	}
 
-	err := rl.Allow(userKey)
+	err := rl.Allow(context.Background(), userKey)
 	if !errors.Is(err, auth.ErrRateLimitExceeded) {
 		t.Errorf("expected ErrRateLimitExceeded, got: %v", err)
 	}
 
-	rl.Reset(userKey)
+	rl.Reset(context.Background(), userKey)
 
-	err = rl.Allow(userKey)
+	err = rl.Allow(context.Background(), userKey)
 	if err != nil {
 		t.Errorf("expected allowed after reset: %v", err)
 	}
@@ -686,16 +686,16 @@ func TestIntegrationRateLimitedJWTValidation(t *testing.T) {
 	clientIP := "192.168.1.100"
 
 	for i := 0; i < 5; i++ {
-		_ = rl.Allow(clientIP)
+		_ = rl.Allow(context.Background(), clientIP)
 		_, _ = a.ValidateToken("bogus-token")
 	}
 
-	err := rl.Allow(clientIP)
+	err := rl.Allow(context.Background(), clientIP)
 	if !errors.Is(err, auth.ErrRateLimitExceeded) {
 		t.Error("expected rate limit exceeded on 6th request")
 	}
 
-	err = rl.Allow("10.0.0.1")
+	err = rl.Allow(context.Background(), "10.0.0.1")
 	if err != nil {
 		t.Errorf("different IP should not be rate limited: %v", err)
 	}
@@ -763,11 +763,11 @@ func TestIntegrationRateLimitedOTPVerification(t *testing.T) {
 	otpKey := "otp:otprl@example.com"
 
 	for i := 0; i < 5; i++ {
-		_ = rl.Allow(otpKey)
+		_ = rl.Allow(context.Background(), otpKey)
 		_ = a.VerifyOTP("otprl@example.com", "000000")
 	}
 
-	err := rl.Allow(otpKey)
+	err := rl.Allow(context.Background(), otpKey)
 	if !errors.Is(err, auth.ErrRateLimitExceeded) {
 		t.Errorf("expected rate limit exceeded, got: %v", err)
 	}
@@ -802,7 +802,7 @@ func TestIntegrationFullAuthFlow(t *testing.T) {
 
 	_ = a.CreatePermissions("fulltest@example.com", "dashboard", "viewer")
 
-	_ = rl.Allow("fulltest@example.com")
+	_ = rl.Allow(context.Background(), "fulltest@example.com")
 	err = a.LoginUser("fulltest@example.com", "MyS3cureP@ss")
 	if err != nil {
 		t.Fatalf("login failed: %v", err)
