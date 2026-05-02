@@ -16,3 +16,12 @@ Auth. Works with Postgres. Supports multiple auth methods (Password, JWT, OTP), 
 * **`auth.DeletePermission(username, spaceName, role)`** - Removes a user's role in a specific space. After this, the user loses access according to that role.
 * You can also handle users with **`auth.RegisterUser()`**, **`auth.LoginUser()`**, **`auth.LoginJWT()`** and **`auth.DeleteUser()`**.
 * For roles, use **`auth.CreateRole()`** and **`auth.DeleteRole()`**.
+
+## Contributing
+All Pull Requests should be sent directly to this repository (**[emmanuelmj/auth](https://github.com/emmanuelmj/auth)**), not the main `GCETOSF` org repo.
+
+Please follow these guidelines:
+1. **Fork & PR:** Fork, branch, and open your Pull Request against the `main` branch here.
+2. **Commit Standard:** Commits should follow conventional formats, e.g., `type(scope): description`.
+3. **Testing:** All changes must pass tests. Run `go test ./...` before submitting your PR.
+4. **Context:** If your PR addresses specific issues or features, ensure you provide properly formatted test data and look at existing implementations for reference.
