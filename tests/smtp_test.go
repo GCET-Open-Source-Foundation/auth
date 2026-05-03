@@ -80,6 +80,7 @@ func runMockSMTP(t *testing.T, binary, inputPath, outputPath string, timeout tim
 }
 
 func TestSMTPMockOTPDelivery(t *testing.T) {
+	skipIfShort(t)
 	binary := findMockBinary(t)
 	a := setupTestAuth(t)
 	_ = a.OTPInit(6, 5*time.Minute)
@@ -258,6 +259,7 @@ func TestSMTPMockMalformedOutput(t *testing.T) {
 }
 
 func TestSMTPMockFullOTPFlow(t *testing.T) {
+	skipIfShort(t)
 	binary := findMockBinary(t)
 	a := setupTestAuth(t)
 	_ = a.OTPInit(6, 5*time.Minute)

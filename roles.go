@@ -1,6 +1,6 @@
 package auth
 
-// CreateRole registers a new role in the system.
+/* CreateRole registers a new role in the system. */
 func (a *Auth) CreateRole(name string) error {
 	if a.Conn == nil {
 		return ErrNotInitialized
