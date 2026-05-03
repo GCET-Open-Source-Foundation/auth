@@ -43,7 +43,7 @@ func TestInitBadConnection(t *testing.T) {
 TestSMTPInitEmptyInputs verifies that SMTPInit rejects empty fields.
 */
 func TestSMTPInitEmptyInputs(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	if err := a.SMTPInit("", "pass", "host", "587"); err == nil {
 		t.Error("expected error for empty email")
@@ -63,7 +63,7 @@ func TestSMTPInitEmptyInputs(t *testing.T) {
 TestSMTPInitInvalidEmail verifies that SMTPInit rejects malformed emails.
 */
 func TestSMTPInitInvalidEmail(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	if err := a.SMTPInit("not-an-email", "pass", "host", "587"); err == nil {
 		t.Error("expected error for invalid email")
@@ -74,7 +74,7 @@ func TestSMTPInitInvalidEmail(t *testing.T) {
 TestSMTPInitValid verifies that SMTPInit accepts valid input.
 */
 func TestSMTPInitValid(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	if err := a.SMTPInit("user@example.com", "password", "smtp.example.com", "587"); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -85,7 +85,7 @@ func TestSMTPInitValid(t *testing.T) {
 TestCloseDoesNotPanic verifies that Close does not panic on a freshly init'd Auth.
 */
 func TestCloseDoesNotPanic(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 	a.Close()
 }
 
@@ -95,7 +95,7 @@ func TestCloseDoesNotPanic(t *testing.T) {
 TestOTPInitValid verifies that OTPInit accepts valid config.
 */
 func TestOTPInitValid(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	if err := a.OTPInit(8, 10*time.Minute); err != nil {
 		t.Errorf("unexpected error: %v", err)
@@ -106,7 +106,7 @@ func TestOTPInitValid(t *testing.T) {
 TestOTPInitInvalid verifies that OTPInit rejects bad config.
 */
 func TestOTPInitInvalid(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	if err := a.OTPInit(3, 5*time.Minute); err == nil {
 		t.Error("expected error for length < 4")
@@ -128,7 +128,7 @@ func TestOTPInitInvalid(t *testing.T) {
 TestRefreshTokenInitValid verifies that RefreshTokenInit accepts valid config.
 */
 func TestRefreshTokenInitValid(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	err := a.RefreshTokenInit(auth.RefreshTokenConfig{
 		Expiry:      7 * 24 * time.Hour,
@@ -143,7 +143,7 @@ func TestRefreshTokenInitValid(t *testing.T) {
 TestRefreshTokenInitInvalid verifies that RefreshTokenInit rejects bad config.
 */
 func TestRefreshTokenInitInvalid(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 
 	if err := a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 0}); err == nil {
 		t.Error("expected error for zero expiry")
@@ -157,7 +157,7 @@ func TestRefreshTokenInitInvalid(t *testing.T) {
 TestRefreshTokenEmptyInputs verifies that empty inputs are rejected.
 */
 func TestRefreshTokenEmptyInputs(t *testing.T) {
-	a := setupTestAuth(t)
+	a := auth.NewBareAuth()
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: time.Hour})
 
 	if _, err := a.GenerateRefreshToken(""); err == nil {

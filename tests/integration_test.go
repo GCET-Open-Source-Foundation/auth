@@ -9,6 +9,12 @@ import (
 	auth "github.com/GCET-Open-Source-Foundation/auth"
 )
 
+func skipIfShort(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+}
+
 /* ======================== Init Integration ======================== */
 
 /*
@@ -16,6 +22,7 @@ TestIntegrationInit verifies that Init successfully connects to a real database
 and creates all required tables.
 */
 func TestIntegrationInit(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	if a.Conn == nil {
@@ -30,6 +37,7 @@ TestIntegrationRegisterAndLogin tests the full user lifecycle:
 register -> login -> wrong password -> non-existent user -> delete -> post-delete.
 */
 func TestIntegrationRegisterAndLogin(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	err := a.RegisterUser("alice@example.com", "strongP@ssw0rd")
@@ -67,6 +75,7 @@ func TestIntegrationRegisterAndLogin(t *testing.T) {
 TestIntegrationUserExists verifies the UserExists check against a real database.
 */
 func TestIntegrationUserExists(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RegisterUser("check@example.com", "password123")
 
@@ -91,6 +100,7 @@ func TestIntegrationUserExists(t *testing.T) {
 TestIntegrationListUsers verifies pagination of users.
 */
 func TestIntegrationListUsers(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	_ = a.RegisterUser("list1@example.com", "pass1")
@@ -118,6 +128,7 @@ func TestIntegrationListUsers(t *testing.T) {
 TestIntegrationChangePassword verifies that password changes work end-to-end.
 */
 func TestIntegrationChangePassword(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RegisterUser("changeme@example.com", "oldPassword")
 
@@ -141,6 +152,7 @@ func TestIntegrationChangePassword(t *testing.T) {
 TestIntegrationChangePassNonExistent verifies that changing a ghost user's password fails.
 */
 func TestIntegrationChangePassNonExistent(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	err := a.ChangePass("ghost@example.com", "newpass")
@@ -153,6 +165,7 @@ func TestIntegrationChangePassNonExistent(t *testing.T) {
 TestIntegrationDuplicateRegistration verifies PK constraint on duplicate user.
 */
 func TestIntegrationDuplicateRegistration(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	err := a.RegisterUser("dupe@example.com", "password1")
@@ -173,6 +186,7 @@ TestIntegrationRegisterLoginJWT tests:
 register -> login with password -> generate JWT -> validate -> LoginJWT.
 */
 func TestIntegrationRegisterLoginJWT(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.JWTInit("integration-test-secret")
 	_ = a.RegisterUser("jwtuser@example.com", "securepass")
@@ -210,6 +224,7 @@ func TestIntegrationRegisterLoginJWT(t *testing.T) {
 TestIntegrationPepperRegistration verifies peppered registration round-trip.
 */
 func TestIntegrationPepperRegistration(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.PepperInit("test-pepper-value")
 	_ = a.RegisterUser("peppered@example.com", "mypassword")
@@ -226,6 +241,7 @@ func TestIntegrationPepperRegistration(t *testing.T) {
 TestIntegrationSpacesRolesPermissions tests the complete RBAC lifecycle.
 */
 func TestIntegrationSpacesRolesPermissions(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	err := a.CreateSpace("workspace-alpha", 1)
@@ -270,6 +286,7 @@ func TestIntegrationSpacesRolesPermissions(t *testing.T) {
 TestIntegrationCascadeDeleteUser verifies FK ON DELETE CASCADE for permissions.
 */
 func TestIntegrationCascadeDeleteUser(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	_ = a.CreateSpace("cascade-space", 1)
@@ -297,6 +314,7 @@ TestIntegrationOTPVerify tests OTP store/verify round-trip.
 We bypass SendOTP (needs real SMTP) and insert directly.
 */
 func TestIntegrationOTPVerify(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	expiry := time.Now().Add(5 * time.Minute)
@@ -328,6 +346,7 @@ func TestIntegrationOTPVerify(t *testing.T) {
 TestIntegrationOTPExpired verifies that an expired OTP is rejected.
 */
 func TestIntegrationOTPExpired(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	expiry := time.Now().Add(-1 * time.Minute)
@@ -346,6 +365,7 @@ func TestIntegrationOTPExpired(t *testing.T) {
 TestIntegrationOTPExists verifies the OTPExists function.
 */
 func TestIntegrationOTPExists(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	expiry := time.Now().Add(5 * time.Minute)
@@ -375,6 +395,7 @@ func TestIntegrationOTPExists(t *testing.T) {
 TestIntegrationListActiveOTPs verifies listing of active OTPs.
 */
 func TestIntegrationListActiveOTPs(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	expiry := time.Now().Add(5 * time.Minute)
@@ -403,6 +424,7 @@ TestIntegrationRefreshTokenFullCycle tests:
 generate -> validate -> rotate -> old revoked -> new valid -> explicit revoke.
 */
 func TestIntegrationRefreshTokenFullCycle(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour, TokenLength: 32})
 	_ = a.RegisterUser("refresh@example.com", "password")
@@ -459,6 +481,7 @@ func TestIntegrationRefreshTokenFullCycle(t *testing.T) {
 TestIntegrationRefreshTokenRevokeAll tests revoking all tokens for a user.
 */
 func TestIntegrationRefreshTokenRevokeAll(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour})
 	_ = a.RegisterUser("revokeall@example.com", "password")
@@ -481,6 +504,7 @@ func TestIntegrationRefreshTokenRevokeAll(t *testing.T) {
 TestIntegrationRefreshTokenInvalid verifies that a bogus token is rejected.
 */
 func TestIntegrationRefreshTokenInvalid(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour})
 
@@ -494,6 +518,7 @@ func TestIntegrationRefreshTokenInvalid(t *testing.T) {
 TestIntegrationRefreshTokenCleanup verifies that expired tokens are cleaned up.
 */
 func TestIntegrationRefreshTokenCleanup(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour})
 	_ = a.RegisterUser("cleanup@example.com", "password")
@@ -516,6 +541,7 @@ func TestIntegrationRefreshTokenCleanup(t *testing.T) {
 TestIntegrationRefreshTokenCascadeDeleteUser verifies FK ON DELETE CASCADE for refresh tokens.
 */
 func TestIntegrationRefreshTokenCascadeDeleteUser(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour})
 	_ = a.RegisterUser("cascade-rt@example.com", "password")
@@ -540,6 +566,7 @@ TestIntegrationRefreshTokenChainRotation tests 5 sequential rotations:
 all old tokens revoked, only the latest valid.
 */
 func TestIntegrationRefreshTokenChainRotation(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour})
 	_ = a.RegisterUser("chain@example.com", "password")
@@ -579,6 +606,7 @@ TestIntegrationJWTRefreshTokenFlow tests the complete authentication flow:
 register -> login -> JWT + refresh -> validate -> rotate -> new JWT -> validate.
 */
 func TestIntegrationJWTRefreshTokenFlow(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.JWTInit("jwt-refresh-test-secret")
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 7 * 24 * time.Hour})
@@ -633,6 +661,7 @@ func TestIntegrationJWTRefreshTokenFlow(t *testing.T) {
 TestIntegrationRateLimitedLogin tests rate limiting on login attempts.
 */
 func TestIntegrationRateLimitedLogin(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
@@ -674,6 +703,7 @@ func TestIntegrationRateLimitedLogin(t *testing.T) {
 TestIntegrationRateLimitedJWTValidation tests rate limiting on token validation.
 */
 func TestIntegrationRateLimitedJWTValidation(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.JWTInit("rate-limit-jwt-secret")
 
@@ -707,6 +737,7 @@ func TestIntegrationRateLimitedJWTValidation(t *testing.T) {
 TestIntegrationPasswordChangeRevokesTokens tests: change password -> revoke all -> re-login.
 */
 func TestIntegrationPasswordChangeRevokesTokens(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.JWTInit("pass-change-secret")
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 24 * time.Hour})
@@ -746,6 +777,7 @@ func TestIntegrationPasswordChangeRevokesTokens(t *testing.T) {
 TestIntegrationRateLimitedOTPVerification tests rate limiting on OTP guessing.
 */
 func TestIntegrationRateLimitedOTPVerification(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
@@ -781,6 +813,7 @@ register -> RBAC setup -> rate-limited login -> JWT + refresh ->
 check permissions -> rotate -> change password -> revoke all -> re-login.
 */
 func TestIntegrationFullAuthFlow(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	_ = a.JWTInit("full-flow-secret")
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: 7 * 24 * time.Hour})

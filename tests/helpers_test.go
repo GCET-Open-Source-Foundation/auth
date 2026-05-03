@@ -14,11 +14,11 @@ Test database connection constants.
 These point to a local PostgreSQL instance used exclusively for testing.
 */
 const (
-	testDBPort = 5432
-	testDBUser = "testuser"
-	testDBPass = "testpass"
-	testDBName = "testauth"
-	testDBHost = "127.0.0.1"
+	testDBPort    = 5432
+	testDBUser    = "testuser"
+	testDBPass    = "testpass"
+	testDBName    = "testauth"
+	testDBHost    = "127.0.0.1"
 	testRedisHost = "127.0.0.1:6379"
 	testRedisPass = ""
 )

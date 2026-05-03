@@ -134,7 +134,7 @@ func (rl *RateLimiter) Stop() {
 	})
 }
 
-// cleanup periodically evicts expired timestamps to prevent memory leaks.
+/* cleanup periodically evicts expired timestamps to prevent memory leaks. */
 func (rl *RateLimiter) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -214,8 +214,9 @@ func (rl *RedisRateLimiter) Allow(ctx context.Context, key string) error {
 	now := time.Now()
 	windowMs := rl.config.Window.Milliseconds()
 	nowMs := now.UnixMilli()
+	member := now.UnixNano()
 
-	res, err := rl.client.EvalSha(ctx, rl.scriptSHA, []string{"ratelimit:" + key}, windowMs, rl.config.MaxRequests, nowMs).Result()
+	res, err := rl.client.EvalSha(ctx, rl.scriptSHA, []string{"ratelimit:" + key}, windowMs, rl.config.MaxRequests, nowMs, member).Result()
 	if err != nil {
 		return ErrRateLimitBackendDown
 	}

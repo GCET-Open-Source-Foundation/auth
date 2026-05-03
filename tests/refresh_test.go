@@ -12,6 +12,7 @@ TestRefreshTokenGenerateAndValidateWithRedis verifies that a refresh token
 generated while Redis is active is cached and can be validated via the cache path.
 */
 func TestRefreshTokenGenerateAndValidateWithRedis(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	if !setupRedis(t, a) {
 		t.Skip("Redis is not available")
@@ -26,6 +27,7 @@ func TestRefreshTokenGenerateAndValidateWithRedis(t *testing.T) {
 	}
 
 	userID := "user_123"
+	_ = a.RegisterUser(userID, "password123")
 	token, err := a.GenerateRefreshToken(userID)
 	if err != nil {
 		t.Fatalf("unexpected error generating token: %v", err)
@@ -50,6 +52,7 @@ TestRefreshTokenRevokeWithRedis verifies that revoking a token
 removes it from both the database and the Redis cache.
 */
 func TestRefreshTokenRevokeWithRedis(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	if !setupRedis(t, a) {
 		t.Skip("Redis is not available")
@@ -61,6 +64,7 @@ func TestRefreshTokenRevokeWithRedis(t *testing.T) {
 	})
 
 	userID := "user_456"
+	_ = a.RegisterUser(userID, "password456")
 	token, _ := a.GenerateRefreshToken(userID)
 
 	err := a.RevokeRefreshToken(token)
@@ -80,6 +84,7 @@ invalidates every token for the target user while leaving
 other users' tokens intact.
 */
 func TestRevokeAllUserRefreshTokensWithRedis(t *testing.T) {
+	skipIfShort(t)
 	a := setupTestAuth(t)
 	if !setupRedis(t, a) {
 		t.Skip("Redis is not available")
@@ -91,9 +96,11 @@ func TestRevokeAllUserRefreshTokensWithRedis(t *testing.T) {
 	})
 
 	userID := "user_789"
+	_ = a.RegisterUser(userID, "password789")
 	token1, _ := a.GenerateRefreshToken(userID)
 	token2, _ := a.GenerateRefreshToken(userID)
 
+	_ = a.RegisterUser("user_other", "password_other")
 	otherToken, _ := a.GenerateRefreshToken("user_other")
 
 	err := a.RevokeAllUserRefreshTokens(userID)

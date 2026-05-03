@@ -1,0 +1,103 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: Run Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.0'
+          cache: true
+
+      - name: Setup MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: mingw-w64-x86_64-gcc
+
+      - name: Build SMTP Mock (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p bin
+          g++ cpp/smtp_mock.cpp -o bin/smtp_mock
+
+      - name: Build SMTP Mock (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          mkdir -p bin
+          g++ cpp/smtp_mock.cpp -static -o bin/smtp_mock.exe
+
+      - name: Verify go.mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: Check formatting
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          if [ -n "$(gofmt -l .)" ]; then
+            echo "Files need formatting:"
+            gofmt -l .
+            exit 1
+          fi
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Run Short Tests
+        run: go test -short ./...
+
+      - name: Setup PostgreSQL (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo systemctl start postgresql.service
+          sudo -u postgres psql -c "CREATE USER testuser WITH PASSWORD 'testpass';"
+          sudo -u postgres psql -c "CREATE DATABASE testauth OWNER testuser;"
+          sudo -u postgres psql -c "ALTER USER testuser CREATEDB;"
+
+      - name: Setup PostgreSQL (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install postgresql@14
+          brew services start postgresql@14
+          sleep 5
+          $(brew --prefix postgresql@14)/bin/createuser -s postgres || true
+          $(brew --prefix postgresql@14)/bin/psql -U postgres -c "CREATE USER testuser WITH PASSWORD 'testpass';"
+          $(brew --prefix postgresql@14)/bin/psql -U postgres -c "CREATE DATABASE testauth OWNER testuser;"
+          $(brew --prefix postgresql@14)/bin/psql -U postgres -c "ALTER USER testuser CREATEDB;"
+
+      - name: Setup Redis
+        if: runner.os != 'Windows'
+        uses: shogo82148/actions-setup-redis@v1
+        with:
+          redis-version: '7'
+
+      - name: Run Integration Tests
+        # /* Needswork */ - currently skipping on windows runner due to redis setup issues
+        if: runner.os != 'Windows'
+        env:
+          TEST_DB_USER: testuser
+          TEST_DB_PASS: testpass
+          TEST_DB_NAME: testauth
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: 5432
+        run: go test -v -race ./...

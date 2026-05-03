@@ -9,21 +9,21 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-type argonParameters struct {
-	time    uint32 /* number of iterations */
-	memory  uint32 /* in KB */
-	threads uint8
-	keyLen  uint32
+type ArgonParameters struct {
+	Time    uint32 /* number of iterations */
+	Memory  uint32 /* in KB */
+	Threads uint8
+	KeyLen  uint32
 }
 
 /*
 Recommended default values
 */
-var globalDefaultArgon = argonParameters{
-	time:    3,
-	memory:  64 * 1024,
-	threads: 4,
-	keyLen:  32,
+var globalDefaultArgon = ArgonParameters{
+	Time:    3,
+	Memory:  64 * 1024,
+	Threads: 4,
+	KeyLen:  32,
 }
 
 /*
@@ -47,10 +47,10 @@ func (a *Auth) DefaultSaltParameters(time uint32, memory uint32, threads uint8, 
 		return fmt.Errorf("%w: key length too small: must be at least 16 bytes", ErrInvalidInput)
 	}
 
-	a.argonParams.time = time
-	a.argonParams.memory = memory
-	a.argonParams.threads = threads
-	a.argonParams.keyLen = keyLen
+	a.argonParams.Time = time
+	a.argonParams.Memory = memory
+	a.argonParams.Threads = threads
+	a.argonParams.KeyLen = keyLen
 
 	return nil
 }
@@ -75,7 +75,7 @@ func (a *Auth) PepperInit(pep string) error {
 
 /*
 Although the library holds a lot of control of the functions we are making public.
-It does make sense to make a hashing function — specifically something that takes a
+It does make sense to make a hashing function ΓÇö specifically something that takes a
 string and returns an argon2 string public. This is a basic functionality any library should have.
 
 This returns the hashes string and the generated salt.
@@ -100,7 +100,7 @@ func (a *Auth) HashPassword(password, salt string) string {
 		log.Printf("Warning: salt length is unusually short (%d bytes). Recommended >= 16 bytes.", len(saltBytes))
 	}
 
-	hash := argon2.IDKey(passwordBytes, saltBytes, a.argonParams.time, a.argonParams.memory, a.argonParams.threads, a.argonParams.keyLen)
+	hash := argon2.IDKey(passwordBytes, saltBytes, a.argonParams.Time, a.argonParams.Memory, a.argonParams.Threads, a.argonParams.KeyLen)
 
 	return hex.EncodeToString(hash)
 }
