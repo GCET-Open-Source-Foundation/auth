@@ -5,10 +5,6 @@ import (
 	"testing"
 )
 
-/*
-TestHashPasswordDeterministic checks that hashing the same password with
-the same salt produces a consistent output.
-*/
 func TestHashPasswordDeterministic(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -20,9 +16,6 @@ func TestHashPasswordDeterministic(t *testing.T) {
 	}
 }
 
-/*
-TestHashPasswordDifferentSalt verifies that different salts produce different hashes.
-*/
 func TestHashPasswordDifferentSalt(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -34,9 +27,6 @@ func TestHashPasswordDifferentSalt(t *testing.T) {
 	}
 }
 
-/*
-TestHashPasswordDifferentPasswords verifies that different passwords produce different hashes.
-*/
 func TestHashPasswordDifferentPasswords(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -48,9 +38,6 @@ func TestHashPasswordDifferentPasswords(t *testing.T) {
 	}
 }
 
-/*
-TestHashPasswordWithPepper verifies that adding a pepper changes the hash output.
-*/
 func TestHashPasswordWithPepper(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -65,9 +52,6 @@ func TestHashPasswordWithPepper(t *testing.T) {
 	}
 }
 
-/*
-TestDefaultSaltParameters validates the parameter boundary checking.
-*/
 func TestDefaultSaltParameters(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -88,9 +72,6 @@ func TestDefaultSaltParameters(t *testing.T) {
 	}
 }
 
-/*
-TestPepperInit verifies pepper initialisation and sync.Once idempotency.
-*/
 func TestPepperInit(t *testing.T) {
 	a := auth.NewBareAuth()
 

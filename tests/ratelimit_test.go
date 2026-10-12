@@ -8,9 +8,6 @@ import (
 	auth "github.com/GCET-Open-Source-Foundation/auth"
 )
 
-/*
-TestNewRateLimiter verifies that a rate limiter is created with valid config.
-*/
 func TestNewRateLimiter(t *testing.T) {
 	rl, err := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 5,
@@ -26,9 +23,6 @@ func TestNewRateLimiter(t *testing.T) {
 	}
 }
 
-/*
-TestNewRateLimiterInvalidConfig checks that invalid configs are rejected.
-*/
 func TestNewRateLimiterInvalidConfig(t *testing.T) {
 	_, err := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 0,
@@ -63,9 +57,6 @@ func TestNewRateLimiterInvalidConfig(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterAllow checks that requests within the limit are allowed.
-*/
 func TestRateLimiterAllow(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 3,
@@ -80,9 +71,6 @@ func TestRateLimiterAllow(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterExceeded checks that exceeding the limit returns an error.
-*/
 func TestRateLimiterExceeded(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 3,
@@ -100,9 +88,6 @@ func TestRateLimiterExceeded(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterEmptyKey checks that empty keys are rejected.
-*/
 func TestRateLimiterEmptyKey(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 5,
@@ -115,9 +100,6 @@ func TestRateLimiterEmptyKey(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterIsolation checks that different keys have independent limits.
-*/
 func TestRateLimiterIsolation(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 2,
@@ -133,9 +115,6 @@ func TestRateLimiterIsolation(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterWindowExpiry verifies that old timestamps expire and free up capacity.
-*/
 func TestRateLimiterWindowExpiry(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 2,
@@ -157,9 +136,6 @@ func TestRateLimiterWindowExpiry(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterRemaining checks the remaining count logic.
-*/
 func TestRateLimiterRemaining(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 5,
@@ -179,9 +155,6 @@ func TestRateLimiterRemaining(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterReset verifies that resetting a key clears its history.
-*/
 func TestRateLimiterReset(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 2,
@@ -203,9 +176,6 @@ func TestRateLimiterReset(t *testing.T) {
 	}
 }
 
-/*
-TestRateLimiterStop verifies that the stop function can be called multiple times safely.
-*/
 func TestRateLimiterStop(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 5,
@@ -216,10 +186,6 @@ func TestRateLimiterStop(t *testing.T) {
 	rl.Stop()
 }
 
-/*
-TestRateLimiterConcurrent tests that the rate limiter is safe
-under concurrent access from multiple goroutines.
-*/
 func TestRateLimiterConcurrent(t *testing.T) {
 	rl, _ := auth.NewRateLimiter(auth.RateLimiterConfig{
 		MaxRequests: 100,
@@ -246,8 +212,6 @@ func TestRateLimiterConcurrent(t *testing.T) {
 		t.Errorf("expected 0 remaining after 500 requests (limit 100), got %d", remaining)
 	}
 }
-
-/* ======================== RedisRateLimiter Tests ======================== */
 
 func TestRedisRateLimiterInitFailure(t *testing.T) {
 	skipIfShort(t)

@@ -8,11 +8,6 @@ import (
 	auth "github.com/GCET-Open-Source-Foundation/auth"
 )
 
-/* ======================== Init / Close ======================== */
-
-/*
-TestInitEmptyInputs verifies that Init rejects empty required fields.
-*/
 func TestInitEmptyInputs(t *testing.T) {
 	ctx := context.Background()
 
@@ -27,9 +22,6 @@ func TestInitEmptyInputs(t *testing.T) {
 	}
 }
 
-/*
-TestInitBadConnection verifies that Init fails gracefully with a bad database connection.
-*/
 func TestInitBadConnection(t *testing.T) {
 	ctx := context.Background()
 
@@ -39,9 +31,6 @@ func TestInitBadConnection(t *testing.T) {
 	}
 }
 
-/*
-TestSMTPInitEmptyInputs verifies that SMTPInit rejects empty fields.
-*/
 func TestSMTPInitEmptyInputs(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -59,9 +48,6 @@ func TestSMTPInitEmptyInputs(t *testing.T) {
 	}
 }
 
-/*
-TestSMTPInitInvalidEmail verifies that SMTPInit rejects malformed emails.
-*/
 func TestSMTPInitInvalidEmail(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -70,9 +56,6 @@ func TestSMTPInitInvalidEmail(t *testing.T) {
 	}
 }
 
-/*
-TestSMTPInitValid verifies that SMTPInit accepts valid input.
-*/
 func TestSMTPInitValid(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -81,19 +64,11 @@ func TestSMTPInitValid(t *testing.T) {
 	}
 }
 
-/*
-TestCloseDoesNotPanic verifies that Close does not panic on a freshly init'd Auth.
-*/
 func TestCloseDoesNotPanic(t *testing.T) {
 	a := auth.NewBareAuth()
 	a.Close()
 }
 
-/* ======================== OTP Config ======================== */
-
-/*
-TestOTPInitValid verifies that OTPInit accepts valid config.
-*/
 func TestOTPInitValid(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -102,9 +77,6 @@ func TestOTPInitValid(t *testing.T) {
 	}
 }
 
-/*
-TestOTPInitInvalid verifies that OTPInit rejects bad config.
-*/
 func TestOTPInitInvalid(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -122,11 +94,6 @@ func TestOTPInitInvalid(t *testing.T) {
 	}
 }
 
-/* ======================== Refresh Token Config ======================== */
-
-/*
-TestRefreshTokenInitValid verifies that RefreshTokenInit accepts valid config.
-*/
 func TestRefreshTokenInitValid(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -139,9 +106,6 @@ func TestRefreshTokenInitValid(t *testing.T) {
 	}
 }
 
-/*
-TestRefreshTokenInitInvalid verifies that RefreshTokenInit rejects bad config.
-*/
 func TestRefreshTokenInitInvalid(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -153,9 +117,6 @@ func TestRefreshTokenInitInvalid(t *testing.T) {
 	}
 }
 
-/*
-TestRefreshTokenEmptyInputs verifies that empty inputs are rejected.
-*/
 func TestRefreshTokenEmptyInputs(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.RefreshTokenInit(auth.RefreshTokenConfig{Expiry: time.Hour})

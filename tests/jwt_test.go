@@ -7,26 +7,17 @@ import (
 	auth "github.com/GCET-Open-Source-Foundation/auth"
 )
 
-/*
-TestJWTInit verifies that the JWT secret and expiry are set correctly.
-*/
 func TestJWTInit(t *testing.T) {
 	a := auth.NewBareAuth()
 
-	/* Empty secret should fail */
 	if err := a.JWTInit(""); err == nil {
 		t.Error("expected error for empty JWT secret")
 	}
-
-	/* Valid secret should succeed */
 	if err := a.JWTInit("my-secret-key"); err != nil {
 		t.Errorf("expected no error, got: %v", err)
 	}
 }
 
-/*
-TestJWTInitCustomExpiry verifies that a custom expiry is applied.
-*/
 func TestJWTInitCustomExpiry(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -34,7 +25,6 @@ func TestJWTInitCustomExpiry(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	/* Generate and validate — if it works the expiry was accepted */
 	token, err := a.GenerateToken("testuser")
 	if err != nil {
 		t.Fatalf("failed to generate token: %v", err)
@@ -48,16 +38,12 @@ func TestJWTInitCustomExpiry(t *testing.T) {
 	}
 }
 
-/*
-TestJWTInitIdempotent verifies that JWTInit only sets the secret once.
-*/
 func TestJWTInitIdempotent(t *testing.T) {
 	a := auth.NewBareAuth()
 
 	_ = a.JWTInit("first-secret")
 	_ = a.JWTInit("second-secret")
 
-	/* Token generated should only work with the first secret */
 	token, _ := a.GenerateToken("testuser")
 
 	b := auth.NewBareAuth()
@@ -69,9 +55,6 @@ func TestJWTInitIdempotent(t *testing.T) {
 	}
 }
 
-/*
-TestGenerateToken verifies that a valid JWT is generated for a given user.
-*/
 func TestGenerateToken(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")
@@ -85,9 +68,6 @@ func TestGenerateToken(t *testing.T) {
 	}
 }
 
-/*
-TestGenerateTokenEmpty checks that empty username is rejected.
-*/
 func TestGenerateTokenEmpty(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")
@@ -98,9 +78,6 @@ func TestGenerateTokenEmpty(t *testing.T) {
 	}
 }
 
-/*
-TestGenerateTokenNotInitialized checks that token generation fails without JWTInit.
-*/
 func TestGenerateTokenNotInitialized(t *testing.T) {
 	a := auth.NewBareAuth()
 
@@ -110,9 +87,6 @@ func TestGenerateTokenNotInitialized(t *testing.T) {
 	}
 }
 
-/*
-TestValidateToken verifies the full generate-then-validate round trip.
-*/
 func TestValidateToken(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")
@@ -131,9 +105,6 @@ func TestValidateToken(t *testing.T) {
 	}
 }
 
-/*
-TestValidateTokenExpired checks that an expired token is correctly rejected.
-*/
 func TestValidateTokenExpired(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")
@@ -149,9 +120,6 @@ func TestValidateTokenExpired(t *testing.T) {
 	}
 }
 
-/*
-TestValidateTokenInvalidString checks that garbage input is rejected.
-*/
 func TestValidateTokenInvalidString(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")
@@ -162,9 +130,6 @@ func TestValidateTokenInvalidString(t *testing.T) {
 	}
 }
 
-/*
-TestValidateTokenWrongSecret checks that a token signed with a different secret fails.
-*/
 func TestValidateTokenWrongSecret(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("secret-one")
@@ -183,9 +148,6 @@ func TestValidateTokenWrongSecret(t *testing.T) {
 	}
 }
 
-/*
-TestLoginJWT verifies that LoginJWT works as a pass-through to ValidateToken.
-*/
 func TestLoginJWT(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")
@@ -204,9 +166,6 @@ func TestLoginJWT(t *testing.T) {
 	}
 }
 
-/*
-TestGenerateTokenCustomExpiry verifies that a custom expiry produces a valid token.
-*/
 func TestGenerateTokenCustomExpiry(t *testing.T) {
 	a := auth.NewBareAuth()
 	_ = a.JWTInit("test-secret")

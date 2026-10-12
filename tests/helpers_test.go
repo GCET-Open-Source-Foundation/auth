@@ -9,10 +9,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-/*
-Test database connection constants.
-These point to a local PostgreSQL instance used exclusively for testing.
-*/
 const (
 	testDBPort    = 5432
 	testDBUser    = "testuser"

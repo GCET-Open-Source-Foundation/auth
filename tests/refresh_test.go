@@ -7,10 +7,6 @@ import (
 	auth "github.com/GCET-Open-Source-Foundation/auth"
 )
 
-/*
-TestRefreshTokenGenerateAndValidateWithRedis verifies that a refresh token
-generated while Redis is active is cached and can be validated via the cache path.
-*/
 func TestRefreshTokenGenerateAndValidateWithRedis(t *testing.T) {
 	skipIfShort(t)
 	a := setupTestAuth(t)
@@ -47,10 +43,6 @@ func TestRefreshTokenGenerateAndValidateWithRedis(t *testing.T) {
 	}
 }
 
-/*
-TestRefreshTokenRevokeWithRedis verifies that revoking a token
-removes it from both the database and the Redis cache.
-*/
 func TestRefreshTokenRevokeWithRedis(t *testing.T) {
 	skipIfShort(t)
 	a := setupTestAuth(t)
@@ -78,11 +70,6 @@ func TestRefreshTokenRevokeWithRedis(t *testing.T) {
 	}
 }
 
-/*
-TestRevokeAllUserRefreshTokensWithRedis verifies that mass revocation
-invalidates every token for the target user while leaving
-other users' tokens intact.
-*/
 func TestRevokeAllUserRefreshTokensWithRedis(t *testing.T) {
 	skipIfShort(t)
 	a := setupTestAuth(t)
